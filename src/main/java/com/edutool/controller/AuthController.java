@@ -5,15 +5,18 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.edutool.dto.LoginRequest;
 import com.edutool.dto.LoginResponse;
 import com.edutool.dto.RegisterRequest;
 import com.edutool.model.User;
+import com.edutool.model.UserStatus;
 import com.edutool.repository.UserRepository;
 import com.edutool.service.AuthService;
 import com.edutool.service.RefreshTokenService;
@@ -39,7 +42,13 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request) {
 
         authService.register(request);
-        return ResponseEntity.ok("Register successfully");
+        return ResponseEntity.ok("Registration successful. Please check your email to verify your account.");
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok("Email verified successfully. You can now log in.");
     }
 
     @PostMapping("/login")
@@ -47,16 +56,20 @@ public class AuthController {
             @RequestBody LoginRequest request,
             HttpServletResponse response) {
 
+        //Load user first to check status
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid username or password"));
+
+        if (user.getStatus() == UserStatus.VERIFICATION_PENDING) {
+            throw new IllegalArgumentException("Please verify your email before logging in.");
+        }
+
         //Authenticate
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
                         request.getPassword())
         );
-
-        //Load user
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow();
 
         //Generate tokens
         String accessToken = jwtUtil.generateAccessToken(user.getUsername());

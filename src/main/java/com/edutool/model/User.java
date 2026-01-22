@@ -30,9 +30,11 @@ public class User implements UserDetails {
     private String passwordHash;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private Role role;
 
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private UserStatus status;
 
     @Column(nullable = false, unique = true, length = 100)
@@ -42,6 +44,8 @@ public class User implements UserDetails {
     private String fullName;
 
     private LocalDateTime createdAt;
+
+    private String emailVerificationToken;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

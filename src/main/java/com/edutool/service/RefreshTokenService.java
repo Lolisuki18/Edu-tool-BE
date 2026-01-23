@@ -2,6 +2,7 @@ package com.edutool.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,5 +33,27 @@ public class RefreshTokenService {
 
         repo.save(token);
         return rawToken;
+    }
+    
+    public void revokeToken(String rawToken, User user) {
+        // Find all non-revoked tokens for this user
+        List<RefreshToken> tokens = repo.findByUserAndRevokedFalse(user);
+        
+        // Check each token using matches() since BCrypt hashes are different each time
+        for (RefreshToken token : tokens) {
+            if (encoder.matches(rawToken, token.getTokenHash())) {
+                token.setRevoked(true);
+                repo.save(token);
+                return;
+            }
+        }
+    }
+    
+    public void revokeAllUserTokens(User user) {
+        List<RefreshToken> tokens = repo.findByUserAndRevokedFalse(user);
+        tokens.forEach(token -> {
+            token.setRevoked(true);
+            repo.save(token);
+        });
     }
 }

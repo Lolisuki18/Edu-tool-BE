@@ -1,12 +1,15 @@
 package com.edutool.service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.edutool.dto.RegisterRequest;
+import com.edutool.dto.request.RegisterRequest;
+import com.edutool.exception.ValidationException;
 import com.edutool.model.Role;
 import com.edutool.model.User;
 import com.edutool.model.UserStatus;
@@ -24,12 +27,18 @@ public class AuthService {
 
     public void register(RegisterRequest request) {
 
+        Map<String, String> errors = new HashMap<>();
+
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username already exists");
+            errors.put("username", "Username already exists");
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            errors.put("email", "Email already exists");
+        }
+
+        if (!errors.isEmpty()) {
+            throw new ValidationException("Registration validation failed", errors);
         }
 
         User user = new User();

@@ -7,51 +7,94 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.edutool.dto.response.BaseResponse;
+import com.edutool.dto.response.ErrorDetail;
+
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
+    public ResponseEntity<BaseResponse<Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         
-        Map<String, String> errors = new HashMap<>();
+        List<ErrorDetail> errors = new ArrayList<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            String errorCode = error.getCode(); // Get validation error code if available
+            errors.add(new ErrorDetail(fieldName, errorMessage, errorCode));
         });
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Validation Failed");
-        response.put("message", "Invalid request data");
-        response.put("errors", errors);
+        BaseResponse<Object> response = BaseResponse.error(
+                HttpStatus.BAD_REQUEST.value(), 
+                "Invalid request data", 
+                errors);
+        return ResponseEntity.badRequest().body(response);
+    }
+    
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<BaseResponse<Object>> handleConstraintViolationException(
+            ConstraintViolationException ex) {
+        
+        List<ErrorDetail> errors = new ArrayList<>();
+        for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
+            String fieldName = violation.getPropertyPath().toString();
+            String errorMessage = violation.getMessage();
+            String errorCode = violation.getConstraintDescriptor().getAnnotation().annotationType().getSimpleName();
+            errors.add(new ErrorDetail(fieldName, errorMessage, errorCode));
+        }
+        
+        BaseResponse<Object> response = BaseResponse.error(
+                HttpStatus.BAD_REQUEST.value(),
+                "Invalid request parameters",
+                errors);
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<BaseResponse<Object>> handleValidationException(
+            ValidationException ex) {
+        
+        BaseResponse<Object> response;
+        if (ex.hasErrors()) {
+            List<ErrorDetail> errors = new ArrayList<>();
+            ex.getErrors().forEach((field, message) -> {
+                errors.add(new ErrorDetail(field, message, null));
+            });
+            response = BaseResponse.error(
+                    HttpStatus.BAD_REQUEST.value(),
+                    ex.getMessage(), 
+                    errors);
+        } else {
+            response = BaseResponse.error(
+                    HttpStatus.BAD_REQUEST.value(),
+                    ex.getMessage());
+        }
         
         return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
+    public ResponseEntity<BaseResponse<Object>> handleIllegalArgumentException(
             IllegalArgumentException ex) {
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("error", "Bad Request");
-        response.put("message", ex.getMessage());
-        
+        BaseResponse<Object> response = BaseResponse.error(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage());
         return ResponseEntity.badRequest().body(response);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        response.put("error", "Internal Server Error");
-        response.put("message", "An unexpected error occurred");
-        
+    public ResponseEntity<BaseResponse<Object>> handleGenericException(Exception ex) {
+        BaseResponse<Object> response = BaseResponse.error(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "An unexpected error occurred");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

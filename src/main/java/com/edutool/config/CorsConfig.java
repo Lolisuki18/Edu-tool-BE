@@ -12,8 +12,8 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // Cho phép tất cả các đường dẫn API
-                        .allowedOrigins("http://localhost:5173") // QUAN TRỌNG: Chỉ cho phép React chạy ở cổng 5173
+                registry.addMapping("/**") 
+                        .allowedOrigins("http://localhost:5173","https://edu-tool-fe.vercel.app/")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);

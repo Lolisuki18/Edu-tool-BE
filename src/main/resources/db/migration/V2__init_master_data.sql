@@ -7,19 +7,19 @@ INSERT INTO users
 VALUES
     ('admin', 'admin@edutool.com',
      '$2a$10$69BykBSBDqQZuNRwGbAKL.ebf5FfrYZrGuDsnX3Ks4pBGbWETpuBu',
-     'System Admin', 0, 0, now()),
+     'System Admin', 'ADMIN', 'ACTIVE', now()),
 
     ( 'lecturer', 'lecturer@edutool.com',
      '$2a$10$69BykBSBDqQZuNRwGbAKL.ebf5FfrYZrGuDsnX3Ks4pBGbWETpuBu',
-     'Nguyen Van A', 1, 0, now()),
+     'Nguyen Van A', 'LECTURER', 'ACTIVE', now()),
 
     ( 'student1', 'student1@edutool.com',
      '$2a$10$69BykBSBDqQZuNRwGbAKL.ebf5FfrYZrGuDsnX3Ks4pBGbWETpuBu',
-     'Tran Van B', 2, 0, now()),
+     'Tran Van B', 'STUDENT', 'ACTIVE', now()),
 
     ('student2', 'student2@edutool.com',
      '$2a$10$69BykBSBDqQZuNRwGbAKL.ebf5FfrYZrGuDsnX3Ks4pBGbWETpuBu',
-     'Le Thi C', 2, 0, now());
+     'Le Thi C', 'STUDENT', 'ACTIVE', now());
 
 -- =========================
 -- LECTURER

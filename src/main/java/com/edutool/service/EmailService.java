@@ -16,7 +16,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject("Email Verification");
-        message.setText("Please verify your email by clicking the link: http://localhost:8081/auth/verify?token=" + token);
+        message.setText("Please verify your email by clicking the link: http://localhost:8080/auth/verify?token=" + token);
         mailSender.send(message);
     }
 }

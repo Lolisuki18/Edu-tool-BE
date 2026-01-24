@@ -67,8 +67,11 @@ public class AuthController {
         User user = userRepository.findByEmailOrUsername(request.getUsername(), request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid username or password"));
 
-        if (user.getStatus() == UserStatus.VERIFICATION_PENDING) {
-            throw new IllegalArgumentException("Please verify your email before logging in.");
+        //Check email is verified or not
+        if (user.getStatus() == UserStatus.VERIFICATION_PENDING) { 
+            if(request.getUsername().equals(user.getEmail()) && !request.getUsername().equals(user.getUsername())) {
+                throw new IllegalArgumentException("Please verify your email before logging in by email.");
+            }
         }
 
         //Authenticate

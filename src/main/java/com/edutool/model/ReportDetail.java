@@ -33,10 +33,10 @@ public class ReportDetail {
     @JoinColumn(name = "student_id")
     private Student student;
 
-    @Column(columnDefinition = "NVARCHAR(255)")
+    @Column(length = 255)
     private String title;
 
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     private String attachmentUrl;

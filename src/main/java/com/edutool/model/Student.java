@@ -37,5 +37,8 @@ public class Student {
 
     @OneToMany(mappedBy = "student")
     private List<CommitContribution> contributions;
+
+    @OneToMany(mappedBy = "student")
+    private List<ReportDetail> reportDetails;
 }
 

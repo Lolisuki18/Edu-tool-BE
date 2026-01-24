@@ -32,6 +32,7 @@ public class CourseEnrollment {
     private Project project;
 
     private String roleInProject;
+    private Integer groupNumber;
 
     @CreationTimestamp
     private LocalDateTime enrolledAt;

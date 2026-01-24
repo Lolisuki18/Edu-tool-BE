@@ -26,7 +26,7 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, length = 300)
+    @Column(nullable = false, length = 300, name = "password_hash")
     private String passwordHash;
 
     @Column(nullable = false)
@@ -40,7 +40,7 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false, length = 255, name = "full_name")
     private String fullName;
 
     private LocalDateTime createdAt;

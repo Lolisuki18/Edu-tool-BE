@@ -27,6 +27,12 @@ public class Project {
     @JoinColumn(name = "course_id")
     private Course course;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String technologies;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
@@ -38,5 +44,8 @@ public class Project {
 
     @OneToMany(mappedBy = "project")
     private List<JiraProject> jiraProjects;
+
+    @OneToMany(mappedBy = "project")
+    private List<ReportDetail> reportDetails;
 }
 

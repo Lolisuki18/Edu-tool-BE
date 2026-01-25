@@ -14,7 +14,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_tokens", indexes = {
+    @Index(name = "idx_token", columnList = "token", unique = true),
+    @Index(name = "idx_refresh_user_id", columnList = "user_id"),
+    @Index(name = "idx_expiry_date", columnList = "expiryDate")
+})
 @Getter
 @Setter
 public class RefreshToken {

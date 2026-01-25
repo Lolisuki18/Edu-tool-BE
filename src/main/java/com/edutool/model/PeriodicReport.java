@@ -10,7 +10,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "periodic_reports")
+@Table(name = "periodic_reports", indexes = {
+    @Index(name = "idx_course_id", columnList = "course_id"),
+    @Index(name = "idx_report_dates", columnList = "reportFromDate, reportToDate"),
+    @Index(name = "idx_submit_dates", columnList = "submitStartAt, submitEndAt")
+})
 @Getter
 @Setter
 @NoArgsConstructor

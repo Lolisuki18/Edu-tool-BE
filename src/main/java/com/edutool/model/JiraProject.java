@@ -10,7 +10,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "jira_projects")
+@Table(name = "jira_projects", indexes = {
+    @Index(name = "idx_jira_key", columnList = "jiraKey", unique = true),
+    @Index(name = "idx_jira_project_id", columnList = "project_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

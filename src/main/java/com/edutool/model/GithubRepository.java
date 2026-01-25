@@ -10,7 +10,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "github_repositories")
+@Table(name = "github_repositories", indexes = {
+    @Index(name = "idx_github_project_id", columnList = "project_id"),
+    @Index(name = "idx_repo_url", columnList = "repoUrl"),
+    @Index(name = "idx_repo_owner", columnList = "owner"),
+    @Index(name = "idx_is_selected", columnList = "isSelected")
+})
 @Getter
 @Setter
 @NoArgsConstructor

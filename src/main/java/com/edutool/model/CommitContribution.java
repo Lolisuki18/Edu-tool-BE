@@ -13,7 +13,6 @@ import java.util.List;
 @Table(name = "commit_contributions", indexes = {
     @Index(name = "idx_contribution_student_id", columnList = "student_id"),
     @Index(name = "idx_contribution_repo_id", columnList = "repo_id"),
-    @Index(name = "idx_commit_date", columnList = "commitDate"),
     @Index(name = "idx_student_repo", columnList = "student_id, repo_id")
 })
 @Getter

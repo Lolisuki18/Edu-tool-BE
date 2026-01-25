@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "srs_documents", indexes = {
-    @Index(name = "idx_jira_project_id", columnList = "jira_project_id"),
+    @Index(name = "idx_srs_jira_project_id", columnList = "jira_project_id"),
     @Index(name = "idx_srs_version", columnList = "version")
 })
 @Getter

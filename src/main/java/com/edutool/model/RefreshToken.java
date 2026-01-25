@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -15,9 +16,9 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "refresh_tokens", indexes = {
-    @Index(name = "idx_token", columnList = "token", unique = true),
+    @Index(name = "idx_token_hash", columnList = "tokenHash", unique = true),
     @Index(name = "idx_refresh_user_id", columnList = "user_id"),
-    @Index(name = "idx_expiry_date", columnList = "expiryDate")
+    @Index(name = "idx_expiry_date", columnList = "expiresAt")
 })
 @Getter
 @Setter

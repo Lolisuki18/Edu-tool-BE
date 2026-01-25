@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "periodic_reports")
@@ -23,13 +24,18 @@ public class PeriodicReport {
     @JoinColumn(name = "course_id")
     private Course course;
 
-    private Integer weekNumber;
-    private Integer year;
+    private LocalDateTime reportFromDate;
+    private LocalDateTime reportToDate;
+    private LocalDateTime submitStartAt;
+    private LocalDateTime submitEndAt;
 
     @Column(columnDefinition = "TEXT")
-    private String content;
+    private String description;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "periodicReport")
+    private List<ReportDetail> reportDetails;
 }
 

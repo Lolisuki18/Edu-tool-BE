@@ -21,7 +21,7 @@ public class Semester {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer semesterId;
 
-    private String name;
+    private String semesterName;
     private LocalDate startDate;
     private LocalDate endDate;
 

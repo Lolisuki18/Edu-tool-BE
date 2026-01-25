@@ -13,7 +13,12 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_username", columnList = "username", unique = true),
+    @Index(name = "idx_email", columnList = "email", unique = true),
+    @Index(name = "idx_role", columnList = "role"),
+    @Index(name = "idx_user_status", columnList = "status")
+})
 @Getter
 @Setter
 @NoArgsConstructor

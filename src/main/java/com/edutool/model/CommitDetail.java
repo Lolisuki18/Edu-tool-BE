@@ -8,7 +8,11 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "commit_details")
+@Table(name = "commit_details", indexes = {
+    @Index(name = "idx_contribution_id", columnList = "contribution_id"),
+    @Index(name = "idx_commit_hash", columnList = "commitHash"),
+    @Index(name = "idx_committed_at", columnList = "committedAt")
+})
 @Getter
 @Setter
 @NoArgsConstructor

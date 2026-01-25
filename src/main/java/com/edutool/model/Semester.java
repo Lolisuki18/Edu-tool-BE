@@ -11,7 +11,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "semesters")
+@Table(name = "semesters", indexes = {
+    @Index(name = "idx_semester_name", columnList = "semesterName"),
+    @Index(name = "idx_semester_dates", columnList = "startDate, endDate")
+})
 @Getter
 @Setter
 @NoArgsConstructor

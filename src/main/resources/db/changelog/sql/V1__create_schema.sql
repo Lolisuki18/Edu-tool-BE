@@ -7,8 +7,8 @@ CREATE TABLE users (
     user_id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(300) NOT NULL,
-    role INTEGER NOT NULL,
-    status INTEGER NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -107,6 +107,7 @@ CREATE TABLE jira_projects (
     project_name VARCHAR(255),
     jira_url VARCHAR(255),
     project_id INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (project_id) REFERENCES projects(project_id)
 );
 

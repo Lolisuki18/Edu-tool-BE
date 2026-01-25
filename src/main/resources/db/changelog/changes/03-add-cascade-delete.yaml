@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 3
+      author: edutool
+      comment: Add CASCADE delete to all foreign keys
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V3__add_cascade_delete.sql
+            splitStatements: true
+            stripComments: true

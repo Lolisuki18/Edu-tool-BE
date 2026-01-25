@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 6
+      author: edutool
+      comment: Add indexes for performance optimization
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V6__add_indexes_for_performance.sql
+            splitStatements: true
+            stripComments: true

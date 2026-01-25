@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: edutool
+      comment: Create initial database schema
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V1__create_schema.sql
+            splitStatements: true
+            stripComments: true

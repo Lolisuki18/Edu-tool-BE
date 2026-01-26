@@ -11,3 +11,7 @@ databaseChangeLog:
       file: db/changelog/changes/06-add-indexes-for-performance.yaml
   - include:
       file: db/changelog/changes/07-init-report-details-data.yaml
+  - include:
+      file: db/changelog/changes/08-add-email-verification-token.yaml
+  - include:
+      file: db/changelog/changes/09-fix-refresh-tokens-sequence.yaml

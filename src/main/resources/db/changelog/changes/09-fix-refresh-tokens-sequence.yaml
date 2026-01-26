@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 9
+      author: system
+      comment: Fix refresh_tokens sequence after initial data load
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V9__fix_refresh_tokens_sequence.sql
+            splitStatements: false
+            stripComments: true

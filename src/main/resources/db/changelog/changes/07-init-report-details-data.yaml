@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 7
+      author: edutool
+      comment: Initialize report details sample data and update related fields
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V7__init_report_details_data.sql
+            splitStatements: true
+            stripComments: true

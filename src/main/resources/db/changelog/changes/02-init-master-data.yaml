@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2
+      author: edutool
+      comment: Initialize master data
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V2__init_master_data.sql
+            splitStatements: true
+            stripComments: true

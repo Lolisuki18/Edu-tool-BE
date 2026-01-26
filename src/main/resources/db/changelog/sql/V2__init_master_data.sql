@@ -87,9 +87,9 @@ VALUES
 -- JIRA PROJECT
 -- =========================
 INSERT INTO jira_projects
-(jira_project_id, jira_key, project_name, jira_url, project_id)
+(jira_project_id, jira_key, project_name, jira_url, project_id, created_at)
 VALUES
-    (1, 'EDU', 'EduTool Jira Project', 'https://jira.edutool.com/browse/EDU', 1);
+    (1, 'EDU', 'EduTool Jira Project', 'https://jira.edutool.com/browse/EDU', 1, now());
 
 -- =========================
 -- SRS DOCUMENT

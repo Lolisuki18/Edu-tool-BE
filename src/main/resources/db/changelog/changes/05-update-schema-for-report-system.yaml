@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 5
+      author: edutool
+      comment: Update schema for report system
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V5__update_schema_for_report_system.sql
+            splitStatements: true
+            stripComments: true

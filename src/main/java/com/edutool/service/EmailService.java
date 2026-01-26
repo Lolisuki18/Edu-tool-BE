@@ -13,7 +13,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${PORT}")
+    @Value("${server.port}")
     private String serverPort;
 
     public void sendVerificationEmail(String to, String token) {

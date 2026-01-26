@@ -548,20 +548,6 @@ Hoặc command line:
 ./mvnw spring-boot:run -Dspring.liquibase.enabled=false
 ```
 
-## So Sánh Với Flyway
-
-| Feature | Flyway | Liquibase |
-|---------|--------|-----------|
-| Format | SQL only | SQL, YAML, JSON, XML |
-| Rollback | ❌ Không (Pro version có) | ✅ Có |
-| Preconditions | ❌ | ✅ Có |
-| Database-agnostic | ❌ | ✅ (type-safe changes) |
-| Generate changelog | ❌ | ✅ Có |
-| Diff databases | ❌ | ✅ Có |
-| Context/Labels | ❌ | ✅ Có |
-| Learning curve | Dễ | Trung bình |
-| Phổ biến | Rất cao | Cao |
-
 ## Ví Dụ Thực Tế
 
 ### 1. Thêm Column Mới

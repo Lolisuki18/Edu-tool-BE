@@ -267,4 +267,8 @@ public class UserService {
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
     }
+    public Long getUserIdFromUsername(String username) {
+        User user = userRepository.findByUsername(username).orElse(null);
+        return user != null ? user.getUserId() : null;
+    }
 }

@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 8
+      author: system
+      comment: Add email_verification_token column to users table
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V8__add_email_verification_token.sql
+            splitStatements: true
+            stripComments: true

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 10
+      author: edutool
+      changes:
+        - addUniqueConstraint:
+            tableName: course_enrollments
+            columnNames: student_id, course_id
+            constraintName: uk_enrollment_student_course
+      rollback:
+        - dropUniqueConstraint:
+            tableName: course_enrollments
+            constraintName: uk_enrollment_student_course

@@ -9,12 +9,18 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "course_enrollments", indexes = {
-    @Index(name = "idx_enrollment_student_id", columnList = "student_id"),
-    @Index(name = "idx_enrollment_course_id", columnList = "course_id"),
-    @Index(name = "idx_enrollment_project_id", columnList = "project_id"),
-    @Index(name = "idx_student_course", columnList = "student_id, course_id")
-})
+@Table(name = "course_enrollments", 
+    indexes = {
+        @Index(name = "idx_enrollment_student_id", columnList = "student_id"),
+        @Index(name = "idx_enrollment_course_id", columnList = "course_id"),
+        @Index(name = "idx_enrollment_project_id", columnList = "project_id"),
+        @Index(name = "idx_student_course", columnList = "student_id, course_id")
+    },
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_enrollment_student_course", 
+                         columnNames = {"student_id", "course_id"})
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -41,5 +47,9 @@ public class CourseEnrollment {
 
     @CreationTimestamp
     private LocalDateTime enrolledAt;
+    
+    private LocalDateTime deletedAt;
+    
+    private LocalDateTime removedFromProjectAt; // Soft delete khỏi project nhưng vẫn trong course
 }
 

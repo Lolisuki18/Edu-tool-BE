@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 11
+      author: edutool
+      changes:
+        - addColumn:
+            tableName: course_enrollments
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  remarks: Soft delete timestamp for enrollment
+              - column:
+                  name: removed_from_project_at
+                  type: TIMESTAMP
+                  remarks: Soft delete timestamp for project removal (keep history)
+      rollback:
+        - dropColumn:
+            tableName: course_enrollments
+            columnName: deleted_at
+        - dropColumn:
+            tableName: course_enrollments
+            columnName: removed_from_project_at

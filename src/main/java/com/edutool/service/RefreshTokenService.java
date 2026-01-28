@@ -56,4 +56,20 @@ public class RefreshTokenService {
             repo.save(token);
         });
     }
+    
+    public User validateAndGetUser(String rawToken) {
+        // Find all non-revoked tokens
+        List<RefreshToken> allTokens = repo.findAll();
+        
+        for (RefreshToken token : allTokens) {
+            // Check if token is valid: not revoked, not expired, and matches the raw token
+            if (!token.isRevoked() && 
+                token.getExpiresAt().isAfter(Instant.now()) &&
+                encoder.matches(rawToken, token.getTokenHash())) {
+                return token.getUser();
+            }
+        }
+        
+        throw new IllegalArgumentException("Invalid or expired refresh token");
+    }
 }

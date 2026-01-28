@@ -106,6 +106,44 @@ public class AuthController {
         return ResponseEntity.ok(BaseResponse.success("Login successful", loginResponse));
     }
     
+    @PostMapping("/refresh")
+    public ResponseEntity<BaseResponse<LoginResponse>> refresh(
+            HttpServletRequest request) {
+        
+        // Get refresh token from cookie
+        Cookie[] cookies = request.getCookies();
+        String refreshToken = null;
+        
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        if (refreshToken == null) {
+            throw new IllegalArgumentException("Refresh token not found");
+        }
+        
+        // Validate refresh token and get user
+        User user = refreshTokenService.validateAndGetUser(refreshToken);
+        
+        // Generate new access token
+        String newAccessToken = jwtUtil.generateAccessToken(user);
+        
+        // Return refresh response
+        LoginResponse response = new LoginResponse();
+        response.setAccessToken(newAccessToken);
+        response.setFullName(user.getFullName());
+        response.setRole(user.getRole().toString());
+        response.setEmail(user.getEmail());
+        response.setStatus(user.getStatus().toString());
+        
+        return ResponseEntity.ok(BaseResponse.success("Token refreshed successfully", response));
+    }
+    
     @PostMapping("/logout")
     public ResponseEntity<BaseResponse<String>> logout(
             HttpServletRequest request,

@@ -38,6 +38,8 @@ public class Project {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+    
+    private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "project")
     private List<CourseEnrollment> enrollments;

@@ -101,6 +101,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<BaseResponse<Object>> handleResourceNotFoundException(
+            ResourceNotFoundException ex) {
+        
+        BaseResponse<Object> response = BaseResponse.error(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<Object>> handleGenericException(Exception ex) {
         BaseResponse<Object> response = BaseResponse.error(

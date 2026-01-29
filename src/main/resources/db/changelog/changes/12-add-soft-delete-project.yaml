@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 12
+      author: edutool
+      changes:
+        - addColumn:
+            tableName: projects
+            columns:
+              - column:
+                  name: deleted_at
+                  type: TIMESTAMP
+                  remarks: Soft delete timestamp for project
+      rollback:
+        - dropColumn:
+            tableName: projects
+            columnName: deleted_at

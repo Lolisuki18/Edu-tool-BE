@@ -23,5 +23,8 @@ public class SemesterRequest {
     
     @NotNull(message = "End date is required")
     private LocalDate endDate;
+
+    @NotNull(message = "Status is required")
+    private Boolean status;
     
 }

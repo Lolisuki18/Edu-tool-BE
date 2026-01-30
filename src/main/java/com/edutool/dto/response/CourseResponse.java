@@ -6,6 +6,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.criteria.CriteriaBuilder.In;
+
 
 @Getter
 @Setter
@@ -15,8 +17,9 @@ public class CourseResponse {
     private Integer courseId;
     private String courseCode;
     private String courseName;
+    private Boolean status;
     private LocalDateTime createdAt;
-
-    private Long semester;
-    private Long lecturer;
+    
+    private SemesterResponse semester;
+    private LecturerResponse lecturer;
 }

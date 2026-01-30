@@ -22,11 +22,15 @@ public class Semester {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "semester_id")
     private Integer semesterId;
 
     private String semesterName;
     private LocalDate startDate;
     private LocalDate endDate;
+    
+    @Column(nullable = false)
+    private Boolean status = true;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

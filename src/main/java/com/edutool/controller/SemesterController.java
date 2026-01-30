@@ -35,7 +35,7 @@ public class SemesterController {
     @PutMapping("/{semesterId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<SemesterResponse>> updateSemester(
-            @PathVariable Long semesterId,
+            @PathVariable Integer semesterId,
             @Valid @RequestBody SemesterRequest request) {
         SemesterResponse response = semesterService.updateSemester(semesterId, request);
         return ResponseEntity.ok(BaseResponse.success(response));
@@ -44,7 +44,7 @@ public class SemesterController {
     //Get semester by ID
     @GetMapping("/{semesterId}")
     public ResponseEntity<BaseResponse<SemesterResponse>> getSemesterById(
-            @PathVariable Long semesterId) {
+            @PathVariable Integer semesterId) {
         SemesterResponse response = semesterService.getSemesterById(semesterId);
         return ResponseEntity.ok(BaseResponse.success(response));
     }
@@ -52,6 +52,15 @@ public class SemesterController {
     @GetMapping
     public ResponseEntity<BaseResponse<List<SemesterResponse>>> getAllSemesters() {
         List<SemesterResponse> response = semesterService.getAllSemesters();
+        return ResponseEntity.ok(BaseResponse.success(response));
+    }
+
+    //Delete semester (soft delete by setting status to false)
+    @DeleteMapping("/{semesterId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BaseResponse<SemesterResponse>> deleteSemester(
+            @PathVariable Integer semesterId) {
+        SemesterResponse response = semesterService.deleteSemester(semesterId);
         return ResponseEntity.ok(BaseResponse.success(response));
     }
 }

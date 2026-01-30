@@ -18,5 +18,10 @@ public class CourseRequest {
     @NotBlank(message = "Course name is required")
     @Size(min = 1, max = 100, message = "Course name must be between 1 and 100 characters")
     private String courseName;
+
+    private Boolean status;
+    private Integer semesterId;
+    private Integer lecturerId;
+    
     
 }

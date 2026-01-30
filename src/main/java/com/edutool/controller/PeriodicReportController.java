@@ -2,12 +2,17 @@ package com.edutool.controller;
 
 import com.edutool.dto.request.PeriodicReportRequest;
 import com.edutool.dto.response.BaseResponse;
+import com.edutool.dto.response.PageResponse;
 import com.edutool.dto.response.PeriodicReportResponse;
 import com.edutool.service.PeriodicReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +20,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/periodic-reports")
@@ -50,46 +54,64 @@ public class PeriodicReportController {
     
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy tất cả periodic report")
-    public ResponseEntity<BaseResponse<List<PeriodicReportResponse>>> getAllPeriodicReports() {
+    @Operation(summary = "Lấy tất cả periodic report (có phân trang)")
+    public ResponseEntity<BaseResponse<PageResponse<PeriodicReportResponse>>> getAllPeriodicReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
         
-        List<PeriodicReportResponse> response = periodicReportService.getAllPeriodicReports();
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         
-        return ResponseEntity.ok(BaseResponse.success("Periodic reports retrieved successfully", response));
-    }
-    
-    @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy tất cả periodic report của course")
-    public ResponseEntity<BaseResponse<List<PeriodicReportResponse>>> getPeriodicReportsByCourse(
-            @PathVariable Integer courseId) {
-        
-        List<PeriodicReportResponse> response = periodicReportService.getPeriodicReportsByCourse(courseId);
+        Page<PeriodicReportResponse> result = periodicReportService.getAllPeriodicReports(pageable);
+        PageResponse<PeriodicReportResponse> response = PageResponse.of(result);
         
         return ResponseEntity.ok(BaseResponse.success("Periodic reports retrieved successfully", response));
     }
     
-    @GetMapping("/course/{courseId}/date-range")
+    @GetMapping("/courses/{courseId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy periodic report theo khoảng thời gian")
-    public ResponseEntity<BaseResponse<List<PeriodicReportResponse>>> getPeriodicReportsByDateRange(
+    @Operation(summary = "Lấy periodic report của course (optional: filter theo fromDate, toDate, có phân trang)")
+    public ResponseEntity<BaseResponse<PageResponse<PeriodicReportResponse>>> getPeriodicReportsByCourse(
             @PathVariable Integer courseId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "reportFromDate") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
         
-        List<PeriodicReportResponse> response = periodicReportService.getPeriodicReportsByDateRange(
-            courseId, fromDate, toDate);
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<PeriodicReportResponse> result;
+        if (fromDate != null && toDate != null) {
+            result = periodicReportService.getPeriodicReportsByDateRange(courseId, fromDate, toDate, pageable);
+        } else {
+            result = periodicReportService.getPeriodicReportsByCourse(courseId, pageable);
+        }
+        
+        PageResponse<PeriodicReportResponse> response = PageResponse.of(result);
         
         return ResponseEntity.ok(BaseResponse.success("Periodic reports retrieved successfully", response));
     }
     
-    @GetMapping("/course/{courseId}/open")
+    @GetMapping("/courses/{courseId}/submissions/active")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy periodic report đang mở (có thể submit)")
-    public ResponseEntity<BaseResponse<List<PeriodicReportResponse>>> getOpenReportsByCourse(
-            @PathVariable Integer courseId) {
+    @Operation(summary = "Lấy periodic report đang mở (có thể submit, có phân trang)")
+    public ResponseEntity<BaseResponse<PageResponse<PeriodicReportResponse>>> getOpenReportsByCourse(
+            @PathVariable Integer courseId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "submitStartAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
         
-        List<PeriodicReportResponse> response = periodicReportService.getOpenReportsByCourse(courseId);
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<PeriodicReportResponse> result = periodicReportService.getOpenReportsByCourse(courseId, pageable);
+        PageResponse<PeriodicReportResponse> response = PageResponse.of(result);
         
         return ResponseEntity.ok(BaseResponse.success("Open periodic reports retrieved successfully", response));
     }
@@ -117,7 +139,7 @@ public class PeriodicReportController {
         return ResponseEntity.ok(BaseResponse.success("Periodic report deleted successfully", null));
     }
     
-    @PostMapping("/{reportId}/restore")
+    @PatchMapping("/{reportId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
     @Operation(summary = "Khôi phục periodic report (chuyển status sang ACTIVE)")
     public ResponseEntity<BaseResponse<PeriodicReportResponse>> restorePeriodicReport(
@@ -130,10 +152,18 @@ public class PeriodicReportController {
     
     @GetMapping("/inactive")
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Lấy danh sách periodic report đã xóa (INACTIVE - chỉ admin)")
-    public ResponseEntity<BaseResponse<List<PeriodicReportResponse>>> getInactivePeriodicReports() {
+    @Operation(summary = "Lấy danh sách periodic report đã xóa (INACTIVE - chỉ admin, có phân trang)")
+    public ResponseEntity<BaseResponse<PageResponse<PeriodicReportResponse>>> getInactivePeriodicReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
         
-        List<PeriodicReportResponse> response = periodicReportService.getInactivePeriodicReports();
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<PeriodicReportResponse> result = periodicReportService.getInactivePeriodicReports(pageable);
+        PageResponse<PeriodicReportResponse> response = PageResponse.of(result);
         
         return ResponseEntity.ok(BaseResponse.success("Inactive periodic reports retrieved successfully", response));
     }

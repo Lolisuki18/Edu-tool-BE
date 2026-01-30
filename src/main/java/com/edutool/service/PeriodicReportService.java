@@ -10,6 +10,8 @@ import com.edutool.model.ReportStatus;
 import com.edutool.repository.CourseRepository;
 import com.edutool.repository.PeriodicReportRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -77,37 +79,34 @@ public class PeriodicReportService {
     /**
      * Lấy tất cả periodic report
      */
-    public List<PeriodicReportResponse> getAllPeriodicReports() {
-        List<PeriodicReport> reports = periodicReportRepository.findAllActive();
+    public Page<PeriodicReportResponse> getAllPeriodicReports(Pageable pageable) {
+        Page<PeriodicReport> reports = periodicReportRepository.findAllActive(pageable);
         
-        return reports.stream()
-            .map(PeriodicReportResponse::fromEntity)
-            .collect(Collectors.toList());
+        return reports.map(PeriodicReportResponse::fromEntity);
     }
     
     /**
      * Lấy tất cả periodic report của course
      */
-    public List<PeriodicReportResponse> getPeriodicReportsByCourse(Integer courseId) {
+    public Page<PeriodicReportResponse> getPeriodicReportsByCourse(Integer courseId, Pageable pageable) {
         // Kiểm tra course tồn tại
         if (!courseRepository.existsById(courseId)) {
             throw new ResourceNotFoundException("Course not found with ID: " + courseId);
         }
         
-        List<PeriodicReport> reports = periodicReportRepository.findByCourse_CourseId(courseId);
+        Page<PeriodicReport> reports = periodicReportRepository.findByCourse_CourseId(courseId, pageable);
         
-        return reports.stream()
-            .map(PeriodicReportResponse::fromEntity)
-            .collect(Collectors.toList());
+        return reports.map(PeriodicReportResponse::fromEntity);
     }
     
     /**
      * Lấy periodic report theo khoảng thời gian
      */
-    public List<PeriodicReportResponse> getPeriodicReportsByDateRange(
+    public Page<PeriodicReportResponse> getPeriodicReportsByDateRange(
             Integer courseId, 
             LocalDateTime fromDate, 
-            LocalDateTime toDate) {
+            LocalDateTime toDate,
+            Pageable pageable) {
         
         // Kiểm tra course tồn tại
         if (!courseRepository.existsById(courseId)) {
@@ -118,29 +117,25 @@ public class PeriodicReportService {
             throw new ValidationException("From date must be before to date");
         }
         
-        List<PeriodicReport> reports = periodicReportRepository.findByCourseAndDateRange(
-            courseId, fromDate, toDate);
+        Page<PeriodicReport> reports = periodicReportRepository.findByCourseAndDateRange(
+            courseId, fromDate, toDate, pageable);
         
-        return reports.stream()
-            .map(PeriodicReportResponse::fromEntity)
-            .collect(Collectors.toList());
+        return reports.map(PeriodicReportResponse::fromEntity);
     }
     
     /**
      * Lấy periodic report đang mở (có thể submit)
      */
-    public List<PeriodicReportResponse> getOpenReportsByCourse(Integer courseId) {
+    public Page<PeriodicReportResponse> getOpenReportsByCourse(Integer courseId, Pageable pageable) {
         // Kiểm tra course tồn tại
         if (!courseRepository.existsById(courseId)) {
             throw new ResourceNotFoundException("Course not found with ID: " + courseId);
         }
         
         LocalDateTime now = LocalDateTime.now();
-        List<PeriodicReport> reports = periodicReportRepository.findOpenReportsByCourse(courseId, now);
+        Page<PeriodicReport> reports = periodicReportRepository.findOpenReportsByCourse(courseId, now, pageable);
         
-        return reports.stream()
-            .map(PeriodicReportResponse::fromEntity)
-            .collect(Collectors.toList());
+        return reports.map(PeriodicReportResponse::fromEntity);
     }
     
     /**
@@ -225,12 +220,10 @@ public class PeriodicReportService {
     /**
      * Lấy danh sách periodic report đã xóa (INACTIVE)
      */
-    public List<PeriodicReportResponse> getInactivePeriodicReports() {
-        List<PeriodicReport> inactiveReports = periodicReportRepository.findInactive();
+    public Page<PeriodicReportResponse> getInactivePeriodicReports(Pageable pageable) {
+        Page<PeriodicReport> inactiveReports = periodicReportRepository.findInactive(pageable);
         
-        return inactiveReports.stream()
-            .map(PeriodicReportResponse::fromEntity)
-            .collect(Collectors.toList());
+        return inactiveReports.map(PeriodicReportResponse::fromEntity);
     }
     
     /**

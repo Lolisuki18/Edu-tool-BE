@@ -22,6 +22,7 @@ public class Course {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "course_id")
     private Integer courseId;
 
     private String courseCode;
@@ -34,6 +35,9 @@ public class Course {
     @ManyToOne
     @JoinColumn(name = "lecturer_id")
     private Lecturer lecturer;
+
+    @Column(nullable = false)
+    private Boolean status = true;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 10
+      author: system
+      comment: Add status column to semester table
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V10__add_status_to_semester.sql
+            splitStatements: true
+            stripComments: true

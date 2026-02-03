@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -96,15 +97,33 @@ public class StudentService {
                 students.getTotalElements()
         );
     }
-
-    public Page<StudentResponse> searchStudents(String keyword, Pageable pageable) {
-        Page<Student> students = studentRepository.searchByFullNameOrStudentCodeOrGithubUsername(keyword, pageable);
+    /**
+     * Search students with multiple filters (intersection of all conditions)
+     * @param fullName - Fuzzy search on fullName (null = ignored)
+     * @param studentCode - Fuzzy search on studentCode (null = ignored)
+     * @param githubUsername - Fuzzy search on githubUsername (null = ignored)
+     * @param keyword - Fuzzy search on fullName/studentCode/githubUsername/username/email (null = ignored)
+     * @param pageable - Pagination parameters
+     * @return Page of students matching all applied filters
+     */
+    public Page<StudentResponse> searchStudentsWithMultipleFilters(
+            String fullName, String studentCode, String githubUsername, String keyword, Pageable pageable) {
+        
+        // Normalize empty strings to null
+        fullName = (fullName != null && fullName.trim().isEmpty()) ? null : fullName;
+        studentCode = (studentCode != null && studentCode.trim().isEmpty()) ? null : studentCode;
+        githubUsername = (githubUsername != null && githubUsername.trim().isEmpty()) ? null : githubUsername;
+        keyword = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
+        
+        Page<Student> studentsPage = studentRepository.searchStudentsWithMultipleFilters(
+                fullName, studentCode, githubUsername, keyword, pageable);
+        
         return new PageImpl<>(
-                students.getContent().stream()
+                studentsPage.getContent().stream()
                         .map(this::convertToResponse)
                         .collect(Collectors.toList()),
                 pageable,
-                students.getTotalElements()
+                studentsPage.getTotalElements()
         );
     }
 

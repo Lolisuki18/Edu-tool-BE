@@ -4,6 +4,7 @@ import com.edutool.dto.request.CreateLecturerRequest;
 import com.edutool.dto.request.UpdateLecturerRequest;
 import com.edutool.dto.response.BaseResponse;
 import com.edutool.dto.response.LecturerResponse;
+import com.edutool.dto.response.StudentResponse;
 import com.edutool.service.LecturerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,9 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/lecturers")
@@ -46,13 +44,6 @@ public class LecturerController {
         return ResponseEntity.ok(BaseResponse.success("Lecturer retrieved successfully", lecturer));
     }
 
-    @GetMapping("/staff-code/{staffCode}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    public ResponseEntity<BaseResponse<LecturerResponse>> getLecturerByStaffCode(@PathVariable String staffCode) {
-        LecturerResponse lecturer = lecturerService.getLecturerByStaffCode(staffCode);
-        return ResponseEntity.ok(BaseResponse.success("Lecturer retrieved successfully", lecturer));
-    }
-
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
     public ResponseEntity<BaseResponse<LecturerResponse>> getLecturerByUserId(@PathVariable Long userId) {
@@ -62,28 +53,71 @@ public class LecturerController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    public ResponseEntity<BaseResponse<Page<LecturerResponse>>> getAllLecturers(
+    public ResponseEntity<?> searchLecturers(
+            @RequestParam(required = false) String fullName,
+            @RequestParam(required = false) String staffCode,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "lecturerId") String sortBy,
             @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<LecturerResponse> lecturers = lecturerService.getAllLecturers(pageable);
-        return ResponseEntity.ok(BaseResponse.success("Lecturers retrieved successfully", lecturers));
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    public ResponseEntity<BaseResponse<Page<LecturerResponse>>> searchLecturers(
-            @RequestParam String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "lecturerId") String sortBy,
-            @RequestParam(defaultValue = "ASC") Sort.Direction direction) {
+        // ========== VALIDATION: Pagination Limits ==========
+        final int MAX_PAGE_SIZE = 100;
+        final int MIN_PAGE_SIZE = 1;
         
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
-        Page<LecturerResponse> lecturers = lecturerService.searchLecturers(keyword, pageable);
+        if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid size. Minimum: " + MIN_PAGE_SIZE + ", Maximum: " + MAX_PAGE_SIZE + ". Received: " + size));
+        }
+        
+        if (page < 0) {
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid page. Must be >= 0. Received: " + page));
+        }
+        
+        // ========== VALIDATION: Whitelist sortBy Fields ==========
+        final String[] ALLOWED_SORT_FIELDS = {"lecturerId", "staffCode", "fullName", "createdAt"};
+        boolean isValidSortField = false;
+        for (String field : ALLOWED_SORT_FIELDS) {
+            if (field.equals(sortBy)) {
+                isValidSortField = true;
+                break;
+            }
+        }
+        
+        if (!isValidSortField) {
+            StringBuilder allowedFields = new StringBuilder();
+            for (int i = 0; i < ALLOWED_SORT_FIELDS.length; i++) {
+                allowedFields.append(ALLOWED_SORT_FIELDS[i]);
+                if (i < ALLOWED_SORT_FIELDS.length - 1) {
+                    allowedFields.append(", ");
+                }
+            }
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid sortBy field: " + sortBy + ". Allowed fields: " + allowedFields.toString()));
+        }
+        
+        // For combined filter search (nativeQuery=true), use Sort.unsorted() to avoid mapping issues
+        Pageable pageableForFilter = PageRequest.of(page, size, Sort.unsorted());
+        
+        // For default search (non-native queries), apply sorting normally
+        Pageable pageableDefault = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        // Check if querystring is not empty for any of the filter parameters
+        boolean hasFilter = (fullName != null && !fullName.trim().isEmpty()) ||
+                            (staffCode != null && !staffCode.trim().isEmpty()) ||
+                            (keyword != null && !keyword.trim().isEmpty());
+        
+        if (hasFilter) {
+            // Search with multiple filters (intersection logic) - native query, use unsorted pageable
+            Page<LecturerResponse> lecturers = lecturerService.searchLecturersWithMultipleFilters(
+                    fullName, staffCode, keyword, pageableForFilter);
+            return ResponseEntity.ok(BaseResponse.success("Lecturers retrieved successfully (combined filters)", lecturers));
+        }
+        
+        // Default: Get all lecturers with pagination - normal JPA query (sorting works)
+        Page<LecturerResponse> lecturers = lecturerService.getAllLecturers(pageableDefault);
         return ResponseEntity.ok(BaseResponse.success("Lecturers retrieved successfully", lecturers));
     }
 
@@ -106,5 +140,18 @@ public class LecturerController {
                 null
         );
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(response);
+    }
+
+    /**
+     * Helper method to map Java field names to database column names (for native queries)
+     */
+    private String mapLecturerSortByToColumn(String sortBy) {
+        return switch (sortBy) {
+            case "lecturerId" -> "lecturer_id";
+            case "staffCode" -> "staff_code";
+            case "fullName" -> "full_name";
+            case "createdAt" -> "created_at";
+            default -> sortBy;
+        };
     }
 }

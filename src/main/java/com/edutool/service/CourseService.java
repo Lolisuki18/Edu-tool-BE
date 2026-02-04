@@ -3,6 +3,8 @@ package com.edutool.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import com.edutool.dto.request.CourseRequest;
@@ -12,14 +14,28 @@ import com.edutool.dto.response.SemesterResponse;
 import com.edutool.dto.response.UserResponse;
 import com.edutool.exception.ValidationException;
 import com.edutool.model.Course;
+import com.edutool.dto.request.CourseRequest;
+import com.edutool.dto.response.CourseResponse;
+import com.edutool.dto.response.LecturerResponse;
+import com.edutool.dto.response.SemesterResponse;
+import com.edutool.dto.response.UserResponse;
+import com.edutool.exception.ValidationException;
+import com.edutool.model.Course;
 import com.edutool.repository.CourseRepository;
 import com.edutool.repository.LecturerRepository;
+import com.edutool.repository.LecturerRepository;
 import com.edutool.repository.SemesterRepository;
+import com.edutool.repository.UserRepository;
 import com.edutool.repository.UserRepository;
 
 import jakarta.persistence.criteria.CriteriaBuilder.In;
 import jakarta.transaction.Transactional;
+import jakarta.persistence.criteria.CriteriaBuilder.In;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.stream.Collectors;

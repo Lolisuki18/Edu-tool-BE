@@ -35,6 +35,10 @@ public class PeriodicReport {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    private ReportStatus status = ReportStatus.ACTIVE;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AssignProjectRequest {
     
-    @NotNull(message = "Student ID is required")
+    // Có thể dùng enrollmentId hoặc studentId tùy theo API endpoint
+    private Integer enrollmentId;
+    
     private Integer studentId;
     
     @NotNull(message = "Project ID is required")

@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 13
+      author: edutool
+      comment: Add status column to periodic_reports for managing report state
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V13__add_status_to_periodic_reports.sql
+            splitStatements: true
+            stripComments: true
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_periodic_reports_status;
+              ALTER TABLE periodic_reports DROP COLUMN IF EXISTS status;

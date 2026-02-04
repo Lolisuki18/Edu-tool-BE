@@ -46,36 +46,36 @@ public class ProjectController {
         return ResponseEntity.ok(BaseResponse.success("Project retrieved successfully", response));
     }
     
-    @GetMapping("/code/{projectCode}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy thông tin project theo code")
-    public ResponseEntity<BaseResponse<ProjectResponse>> getProjectByCode(
-            @PathVariable String projectCode) {
-        
-        ProjectResponse response = projectService.getProjectByCode(projectCode);
-        
-        return ResponseEntity.ok(BaseResponse.success("Project retrieved successfully", response));
-    }
-    
-    @GetMapping("/course/{courseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy tất cả project của course")
-    public ResponseEntity<BaseResponse<List<ProjectResponse>>> getProjectsByCourse(
-            @PathVariable Integer courseId) {
-        
-        List<ProjectResponse> projects = projectService.getProjectsByCourse(courseId);
-        
-        return ResponseEntity.ok(BaseResponse.success(
-            "Retrieved " + projects.size() + " projects", projects));
-    }
-    
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    @Operation(summary = "Lấy tất cả project")
-    public ResponseEntity<BaseResponse<List<ProjectResponse>>> getAllProjects() {
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
+    @Operation(summary = "Lấy thông tin project theo code hoặc lấy tất cả projects")
+    public ResponseEntity<BaseResponse<?>> getProjects(
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) Integer courseId,
+            @RequestParam(required = false, defaultValue = "false") Boolean deleted) {
         
+        // Nếu có code, lấy theo code
+        if (code != null) {
+            ProjectResponse response = projectService.getProjectByCode(code);
+            return ResponseEntity.ok(BaseResponse.success("Project retrieved successfully", response));
+        }
+        
+        // Nếu có courseId, lấy theo course
+        if (courseId != null) {
+            List<ProjectResponse> projects = projectService.getProjectsByCourse(courseId);
+            return ResponseEntity.ok(BaseResponse.success(
+                "Retrieved " + projects.size() + " projects", projects));
+        }
+        
+        // Nếu deleted = true, lấy projects đã xóa (chỉ admin)
+        if (deleted) {
+            List<ProjectResponse> projects = projectService.getDeletedProjects();
+            return ResponseEntity.ok(BaseResponse.success(
+                "Retrieved " + projects.size() + " deleted projects", projects));
+        }
+        
+        // Mặc định lấy tất cả
         List<ProjectResponse> projects = projectService.getAllProjects();
-        
         return ResponseEntity.ok(BaseResponse.success(
             "Retrieved " + projects.size() + " projects", projects));
     }
@@ -91,48 +91,37 @@ public class ProjectController {
         
         return ResponseEntity.ok(BaseResponse.success("Project updated successfully", response));
     }
+
+    
+    @PatchMapping("/{projectId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @Operation(summary = "Khôi phục project đã xóa")
+    public ResponseEntity<BaseResponse<ProjectResponse>> patchProject(
+            @PathVariable Integer projectId,
+            @RequestParam(required = false) String action) {
+        
+        if ("restore".equals(action)) {
+            ProjectResponse response = projectService.restoreProject(projectId);
+            return ResponseEntity.ok(BaseResponse.success("Project restored successfully", response));
+        }
+        
+        return ResponseEntity.badRequest()
+            .body(BaseResponse.error("Invalid action. Supported actions: restore"));
+    }
     
     @DeleteMapping("/{projectId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    @Operation(summary = "Xóa project (soft delete)")
+    @Operation(summary = "Xóa project (soft delete) hoặc xóa vĩnh viễn (permanent=true, chỉ admin)")
     public ResponseEntity<BaseResponse<Void>> deleteProject(
-            @PathVariable Integer projectId) {
+            @PathVariable Integer projectId,
+            @RequestParam(required = false, defaultValue = "false") Boolean permanent) {
+        
+        if (permanent) {
+            projectService.permanentlyDeleteProject(projectId);
+            return ResponseEntity.ok(BaseResponse.success("Project permanently deleted", null));
+        }
         
         projectService.deleteProject(projectId);
-        
         return ResponseEntity.ok(BaseResponse.success("Project deleted successfully", null));
-    }
-    
-    @PostMapping("/restore/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    @Operation(summary = "Khôi phục project đã xóa")
-    public ResponseEntity<BaseResponse<ProjectResponse>> restoreProject(
-            @PathVariable Integer projectId) {
-        
-        ProjectResponse response = projectService.restoreProject(projectId);
-        
-        return ResponseEntity.ok(BaseResponse.success("Project restored successfully", response));
-    }
-    
-    @GetMapping("/deleted")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Xem danh sách project đã xóa (chỉ admin)")
-    public ResponseEntity<BaseResponse<List<ProjectResponse>>> getDeletedProjects() {
-        
-        List<ProjectResponse> projects = projectService.getDeletedProjects();
-        
-        return ResponseEntity.ok(BaseResponse.success(
-            "Retrieved " + projects.size() + " deleted projects", projects));
-    }
-    
-    @DeleteMapping("/permanent/{projectId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Xóa vĩnh viễn project (hard delete - chỉ admin)")
-    public ResponseEntity<BaseResponse<Void>> permanentlyDeleteProject(
-            @PathVariable Integer projectId) {
-        
-        projectService.permanentlyDeleteProject(projectId);
-        
-        return ResponseEntity.ok(BaseResponse.success("Project permanently deleted", null));
     }
 }

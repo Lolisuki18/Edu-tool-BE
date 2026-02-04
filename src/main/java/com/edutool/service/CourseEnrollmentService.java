@@ -67,15 +67,29 @@ public class CourseEnrollmentService {
         Project project = projectRepository.findById(request.getProjectId())
             .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + request.getProjectId()));
         
-        // 2. Kiểm tra SV phải tồn tại
-        Student student = studentRepository.findById(request.getStudentId())
-            .orElseThrow(() -> new ResourceNotFoundException("Student not found with ID: " + request.getStudentId()));
+        CourseEnrollment enrollment;
         
-        // 3. Kiểm tra sinh viên đã enroll vào course của project chưa
-        CourseEnrollment enrollment = enrollmentRepository
-            .findByStudent_StudentIdAndCourse_CourseId(request.getStudentId(), project.getCourse().getCourseId())
-            .orElseThrow(() -> new ValidationException(
-                "Student must be enrolled in the course before being assigned to a project"));
+        // Nếu có enrollmentId, dùng trực tiếp
+        if (request.getEnrollmentId() != null) {
+            enrollment = enrollmentRepository.findById(request.getEnrollmentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + request.getEnrollmentId()));
+            
+            // Kiểm tra enrollment có thuộc course của project không
+            if (!enrollment.getCourse().getCourseId().equals(project.getCourse().getCourseId())) {
+                throw new ValidationException("Enrollment does not belong to the same course as the project");
+            }
+        } else {
+            // Nếu không có enrollmentId, dùng studentId (backward compatibility)
+            // 2. Kiểm tra SV phải tồn tại
+            Student student = studentRepository.findById(request.getStudentId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found with ID: " + request.getStudentId()));
+            
+            // 3. Kiểm tra sinh viên đã enroll vào course của project chưa
+            enrollment = enrollmentRepository
+                .findByStudent_StudentIdAndCourse_CourseId(request.getStudentId(), project.getCourse().getCourseId())
+                .orElseThrow(() -> new ValidationException(
+                    "Student must be enrolled in the course before being assigned to a project"));
+        }
         
         // 4. Kiểm tra SV chỉ có 1 project / course
         if (enrollment.getProject() != null) {
@@ -91,6 +105,16 @@ public class CourseEnrollmentService {
         CourseEnrollment updatedEnrollment = enrollmentRepository.save(enrollment);
         
         return EnrollmentResponse.fromEntity(updatedEnrollment);
+    }
+    
+    /**
+     * Lấy enrollment theo ID
+     */
+    public EnrollmentResponse getEnrollmentById(Integer enrollmentId) {
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
+        
+        return EnrollmentResponse.fromEntity(enrollment);
     }
     
     /**
@@ -154,6 +178,19 @@ public class CourseEnrollmentService {
     }
     
     /**
+     * Xóa sinh viên khỏi course (soft delete) - Overload với enrollmentId
+     */
+    @Transactional
+    public void removeStudentFromCourseById(Integer enrollmentId) {
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
+        
+        // Soft delete
+        enrollment.setDeletedAt(java.time.LocalDateTime.now());
+        enrollmentRepository.save(enrollment);
+    }
+    
+    /**
      * Khôi phục enrollment đã xóa
      */
     @Transactional
@@ -208,6 +245,29 @@ public class CourseEnrollmentService {
     }
     
     /**
+     * Xóa sinh viên khỏi project (soft delete - giữ lịch sử) - Overload với enrollmentId
+     */
+    @Transactional
+    public EnrollmentResponse removeStudentFromProjectById(Integer enrollmentId) {
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
+        
+        if (enrollment.getProject() == null) {
+            throw new ValidationException("Student is not assigned to any project in this course");
+        }
+        
+        if (enrollment.getRemovedFromProjectAt() != null) {
+            throw new ValidationException("Student has already been removed from the project");
+        }
+        
+        // Soft delete - giữ nguyên project, role, groupNumber để lưu lịch sử
+        enrollment.setRemovedFromProjectAt(java.time.LocalDateTime.now());
+        
+        CourseEnrollment updatedEnrollment = enrollmentRepository.save(enrollment);
+        return EnrollmentResponse.fromEntity(updatedEnrollment);
+    }
+    
+    /**
      * Khôi phục sinh viên vào lại project
      */
     @Transactional
@@ -216,6 +276,25 @@ public class CourseEnrollmentService {
             .findByStudent_StudentIdAndCourse_CourseId(studentId, courseId)
             .orElseThrow(() -> new ResourceNotFoundException(
                 "Enrollment not found for student " + studentId + " in course " + courseId));
+        
+        if (enrollment.getRemovedFromProjectAt() == null) {
+            throw new ValidationException("Student is already active in the project");
+        }
+        
+        // Restore
+        enrollment.setRemovedFromProjectAt(null);
+        
+        CourseEnrollment restoredEnrollment = enrollmentRepository.save(enrollment);
+        return EnrollmentResponse.fromEntity(restoredEnrollment);
+    }
+    
+    /**
+     * Khôi phục sinh viên vào lại project - Overload với enrollmentId
+     */
+    @Transactional
+    public EnrollmentResponse restoreStudentToProjectById(Integer enrollmentId) {
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
         
         if (enrollment.getRemovedFromProjectAt() == null) {
             throw new ValidationException("Student is already active in the project");
@@ -261,6 +340,42 @@ public class CourseEnrollmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + request.getProjectId()));
             
             if (!newProject.getCourse().getCourseId().equals(courseId)) {
+                throw new ValidationException("Project does not belong to this course");
+            }
+            
+            enrollment.setProject(newProject);
+        }
+        
+        // Update role và group number nếu có
+        if (request.getRoleInProject() != null) {
+            enrollment.setRoleInProject(request.getRoleInProject());
+        }
+        
+        if (request.getGroupNumber() != null) {
+            enrollment.setGroupNumber(request.getGroupNumber());
+        }
+        
+        CourseEnrollment updatedEnrollment = enrollmentRepository.save(enrollment);
+        return EnrollmentResponse.fromEntity(updatedEnrollment);
+    }
+    
+    /**
+     * Update enrollment: thay đổi project, role, hoặc group number - Overload với enrollmentId
+     */
+    @Transactional
+    public EnrollmentResponse updateEnrollmentById(Integer enrollmentId, 
+                                                   com.edutool.dto.request.UpdateEnrollmentRequest request) {
+        // Lấy enrollment hiện tại
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
+        
+        // Nếu có projectId mới
+        if (request.getProjectId() != null) {
+            // Kiểm tra project tồn tại và thuộc course
+            Project newProject = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + request.getProjectId()));
+            
+            if (!newProject.getCourse().getCourseId().equals(enrollment.getCourse().getCourseId())) {
                 throw new ValidationException("Project does not belong to this course");
             }
             

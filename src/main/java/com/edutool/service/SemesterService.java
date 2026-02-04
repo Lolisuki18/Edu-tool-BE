@@ -65,12 +65,8 @@ public class SemesterService {
             Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new IllegalArgumentException("Semester not found with ID: " + semesterId));
             return toResponse(semester);
-    }
-
-    //Get all semesters
-    
-
-    //Get all semesters
+            }
+        //Get all semesters
     public List<SemesterResponse> getAllSemesters() {
         // Validate user exists
         Long userId = getCurrentUserId();
@@ -94,11 +90,6 @@ public class SemesterService {
 
             Semester semester = semesterRepository.findById(semesterId)
                     .orElseThrow(() -> new IllegalArgumentException("Semester not found with ID: " + semesterId));
-
-            // Check if trying to set status to true - not allowed during update
-            if (request.getStatus() == null || request.getStatus() == true) {
-                throw new IllegalArgumentException("Cannot set semester status to true during update. Use soft delete only.");
-            }
 
             semester.setSemesterName(request.getName());
             semester.setStartDate(request.getStartDate());

@@ -16,10 +16,14 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/09-fix-refresh-tokens-sequence.yaml
   - include:
-      file: db/changelog/changes/10-add-enrollment-unique-constraint.yaml
+      file: db/changelog/changes/10-add-status-to-semester.yaml
   - include:
       file: db/changelog/changes/11-add-soft-delete-enrollment.yaml
   - include:
       file: db/changelog/changes/12-add-soft-delete-project.yaml
   - include:
       file: db/changelog/changes/13-add-status-to-periodic-reports.yaml
+  - include:
+      file: db/changelog/changes/14-add-status-to-semester.yaml
+  - include:
+      file: db/changelog/changes/15-add-status-to-course.yaml

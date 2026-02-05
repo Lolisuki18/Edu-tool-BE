@@ -46,7 +46,7 @@ public class SemesterService {
             semester.setSemesterName(request.getName());
             semester.setStartDate(request.getStartDate());
             semester.setEndDate(request.getEndDate());
-            
+            semester.setStatus(true);
             return toResponse(semesterRepository.save(semester));
         } catch (IllegalArgumentException e) {
             throw e;
@@ -56,7 +56,7 @@ public class SemesterService {
     }
 
     //Get semesters by ID
-    public SemesterResponse getSemesterById(Long semesterId) {
+    public SemesterResponse getSemesterById(Integer semesterId) {
             // Validate user exists
             Long userId = getCurrentUserId();
             userRepository.findById(userId)
@@ -80,11 +80,10 @@ public class SemesterService {
         }
     //Update kì học
     @Transactional
-    public SemesterResponse updateSemester(Long semesterId, SemesterRequest request) {
+    public SemesterResponse updateSemester(Integer semesterId, SemesterRequest request) {
         try {
             // Validate user exists
             Long userId = getCurrentUserId();
-            
             userRepository.findById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
             validateDates(request);
@@ -95,7 +94,9 @@ public class SemesterService {
             semester.setSemesterName(request.getName());
             semester.setStartDate(request.getStartDate());
             semester.setEndDate(request.getEndDate());
-            
+            if(request.getStatus() != null) {
+                semester.setStatus(request.getStatus());
+            }   
             return toResponse(semesterRepository.save(semester));
         } catch (IllegalArgumentException e) {
             throw e;
@@ -103,14 +104,38 @@ public class SemesterService {
             throw new RuntimeException("Error updating semester: " + e.getMessage(), e);
         }
     }
+    //delete by status
+    public SemesterResponse deleteSemester(Integer semesterId) {
+        try {
+            // Validate user exists
+            Long userId = getCurrentUserId();
+            userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+            
+
+            Semester semester = semesterRepository.findById(semesterId)
+                    .orElseThrow(() -> new IllegalArgumentException("Semester not found with ID: " + semesterId));
+            if (semester.getStatus() == false) {
+                throw new IllegalArgumentException("Cannot delete semester that is already deleted");
+            }
+
+            semester.setStatus(false); // Soft delete by setting status to false
+            return toResponse(semesterRepository.save(semester));
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Error deleting semester: " + e.getMessage(), e);
+        }
+    }
  
     private SemesterResponse toResponse(Semester semester) {
         SemesterResponse response = new SemesterResponse();
         Integer semesterId = semester.getSemesterId();
-        response.setSemesterId(semesterId != null ? semesterId.longValue() : null);
+        response.setSemesterId(semesterId == null ? null : semesterId.intValue());
         response.setName(semester.getSemesterName());
         response.setStartDate(semester.getStartDate());
         response.setEndDate(semester.getEndDate());
+        response.setStatus(semester.getStatus());
         response.setCreatedAt(semester.getCreatedAt());
         return response;
     }

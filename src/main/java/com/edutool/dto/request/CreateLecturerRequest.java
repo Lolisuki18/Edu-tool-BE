@@ -2,6 +2,7 @@ package com.edutool.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,6 @@ public class CreateLecturerRequest {
     @Size(min = 3, max = 50, message = "Staff code must be between 3 and 50 characters")
     private String staffCode;
 
-    @NotBlank(message = "User ID is required")
+    @NotNull(message = "User ID is required")
     private Long userId;
 }

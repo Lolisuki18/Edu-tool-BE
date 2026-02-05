@@ -1,6 +1,7 @@
 package com.edutool.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -219,45 +220,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    /**
-     * Search users by keyword
-     * @param keyword - Search keyword
-     * @return List of matching users
-     */
-    public List<User> searchUsers(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return userRepository.findAll();
-        }
-        return userRepository.searchUsers(keyword.trim());
-    }
 
-    /**
-     * Get users by role
-     * @param role - User role
-     * @return List of users with the specified role
-     */
-    public List<User> getUsersByRole(String role) {
-        try {
-            Role userRole = Role.valueOf(role.toUpperCase());
-            return userRepository.findByRole(userRole);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid role. Allowed values: ADMIN, LECTURER, STUDENT");
-        }
-    }
-
-    /**
-     * Get users by status
-     * @param status - User status
-     * @return List of users with the specified status
-     */
-    public List<User> getUsersByStatus(String status) {
-        try {
-            UserStatus userStatus = UserStatus.valueOf(status.toUpperCase());
-            return userRepository.findByStatus(userStatus);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid status. Allowed values: ACTIVE, INACTIVE, SUSPENDED");
-        }
-    }
 
     /**
      * Get user by username
@@ -267,8 +230,60 @@ public class UserService {
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
     }
+    
     public Long getUserIdFromUsername(String username) {
         User user = userRepository.findByUsername(username).orElse(null);
         return user != null ? user.getUserId() : null;
+    }
+
+
+
+    /**
+     * Search users with multiple filters (intersection of all conditions)
+     * Case 1: Combine username, email, fullName, role, status
+     * Case 2: Combine keyword, role, status
+     * - If a parameter is null/empty, it's ignored (acts as OR 1=1)
+     * - Results are intersection of all applied conditions
+     * 
+     * @param username - Fuzzy search on username (null = ignored)
+     * @param email - Fuzzy search on email (null = ignored)
+     * @param fullName - Fuzzy search on fullName (null = ignored)
+     * @param keyword - Fuzzy search on username/email/fullName (null = ignored)
+     * @param role - Exact match on role (null = ignored)
+     * @param status - Exact match on status (null = ignored)
+     * @param pageable - Pagination parameters
+     * @return Page of users matching all applied filters (intersection)
+     */
+    public Page<User> searchUsersWithMultipleFilters(
+            String username, String email, String fullName, String keyword, String role, String status, Pageable pageable) {
+        
+        // Normalize empty strings to null
+        username = (username != null && username.trim().isEmpty()) ? null : username;
+        email = (email != null && email.trim().isEmpty()) ? null : email;
+        fullName = (fullName != null && fullName.trim().isEmpty()) ? null : fullName;
+        keyword = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
+        role = (role != null && role.trim().isEmpty()) ? null : role;
+        status = (status != null && status.trim().isEmpty()) ? null : status;
+        
+        // Validate role if provided
+        if (role != null) {
+            try {
+                Role.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid role. Allowed values: ADMIN, LECTURER, STUDENT");
+            }
+        }
+        
+        // Validate status if provided
+        if (status != null) {
+            try {
+                UserStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid status. Allowed values: ACTIVE, INACTIVE, SUSPENDED");
+            }
+        }
+        
+        // Call repository method that implements intersection logic
+        return userRepository.searchUsersWithMultipleFilters(username, email, fullName, keyword, role, status, pageable);
     }
 }

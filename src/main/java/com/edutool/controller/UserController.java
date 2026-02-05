@@ -32,7 +32,9 @@ import com.edutool.dto.request.UpdateUserRequest;
 import com.edutool.dto.response.BaseResponse;
 import com.edutool.dto.response.ImportResponse;
 import com.edutool.dto.response.UserResponse;
+import com.edutool.model.Role;
 import com.edutool.model.User;
+import com.edutool.model.UserStatus;
 import com.edutool.repository.UserRepository;
 import com.edutool.service.CsvExportService;
 import com.edutool.service.CsvImportService;
@@ -45,10 +47,9 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -106,25 +107,119 @@ public class UserController {
     }
 
     /**
-     * Get all users (Admin only)
+     * Get all users with search and filter options (Admin only)
+     * 
+     * @param username - Fuzzy search by username (optional)
+     * @param email - Fuzzy search by email (optional)
+     * @param fullName - Fuzzy search by full name (optional)
+     * @param keyword - Fuzzy search on username/email/fullName (optional)
+     * @param role - Exact filter by role: ADMIN, LECTURER, STUDENT (optional)
+     * @param status - Exact filter by status: ACTIVE, INACTIVE, SUSPENDED (optional)
      * @param page - Page number (default: 0)
      * @param size - Page size (default: 10)
      * @param sortBy - Sort field (default: userId)
-     * @param sortDirection - Sort direction (default: ASC)
-     * @return List of users
+     * @param sortDirection - Sort direction ASC/DESC (default: ASC)
+     * @return List of users matching filters, or paginated results
      */
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<Page<UserResponse>>> getAllUsers(
+    public ResponseEntity<?> getAllUsers(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String fullName,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "userId") String sortBy,
             @RequestParam(defaultValue = "ASC") String sortDirection) {
         
-        Sort.Direction direction = sortDirection.equalsIgnoreCase("DESC") ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        // ========== VALIDATION: Pagination Limits ==========
+        final int MAX_PAGE_SIZE = 100;
+        final int MIN_PAGE_SIZE = 1;
         
-        Page<User> usersPage = userService.getUsersWithPagination(pageable);
+        // Validate page size
+        if (size < MIN_PAGE_SIZE || size > MAX_PAGE_SIZE) {
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid size. Minimum: " + MIN_PAGE_SIZE + ", Maximum: " + MAX_PAGE_SIZE + ". Received: " + size));
+        }
+        
+        // Validate page number
+        if (page < 0) {
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid page. Must be >= 0. Received: " + page));
+        }
+        
+        // ========== VALIDATION: Whitelist sortBy Fields ==========
+        final String[] ALLOWED_SORT_FIELDS = {"userId", "username", "email", "fullName", "role", "status", "createdAt", "updatedAt"};
+        boolean isValidSortField = false;
+        for (String field : ALLOWED_SORT_FIELDS) {
+            if (field.equals(sortBy)) {
+                isValidSortField = true;
+                break;
+            }
+        }
+        
+        if (!isValidSortField) {
+            StringBuilder allowedFields = new StringBuilder();
+            for (int i = 0; i < ALLOWED_SORT_FIELDS.length; i++) {
+                allowedFields.append(ALLOWED_SORT_FIELDS[i]);
+                if (i < ALLOWED_SORT_FIELDS.length - 1) {
+                    allowedFields.append(", ");
+                }
+            }
+            return ResponseEntity.badRequest()
+                    .body(BaseResponse.error("Invalid sortBy field: " + sortBy + ". Allowed fields: " + allowedFields.toString()));
+        }
+        
+        // ========== VALIDATION: Role ==========
+        if (role != null && !role.trim().isEmpty()) {
+            try {
+                Role.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(BaseResponse.error("Invalid role value. Allowed values: ADMIN, LECTURER, STUDENT"));
+            }
+        }
+        
+        // ========== VALIDATION: Status ==========
+        if (status != null && !status.trim().isEmpty()) {
+            try {
+                UserStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest()
+                        .body(BaseResponse.error("Invalid status value. Allowed values: ACTIVE, INACTIVE, SUSPENDED"));
+            }
+        }
+        
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("DESC") ? Sort.Direction.DESC : Sort.Direction.ASC;
+        
+        // For combined filter search (nativeQuery=true), use Sort.unsorted() to avoid mapping issues
+        // Sorting will still work but without custom order - results are ordered by primary key
+        Pageable pageableForFilter = PageRequest.of(page, size, Sort.unsorted());
+        
+        // For default search (non-native queries), apply sorting normally
+        Pageable pageableDefault = PageRequest.of(page, size, Sort.by(direction, sortBy));
+
+        // Check if querystring is not empty for any of the filter parameters
+        boolean hasFilter = (username != null && !username.trim().isEmpty()) ||
+                            (email != null && !email.trim().isEmpty()) ||
+                            (fullName != null && !fullName.trim().isEmpty()) ||
+                            (keyword != null && !keyword.trim().isEmpty()) ||
+                            (role != null && !role.trim().isEmpty()) ||
+                            (status != null && !status.trim().isEmpty());
+                            
+        if (hasFilter) {
+            // Use combined fuzzy + exact filter search (native query - use unsorted pageable)
+            Page<User> filteredUsersPage = userService.searchUsersWithMultipleFilters(
+                    username, email, fullName, keyword, role, status, pageableForFilter);
+            Page<UserResponse> userResponsePage = filteredUsersPage.map(this::convertToUserResponse);
+            return ResponseEntity.ok(BaseResponse.success("Users retrieved successfully", userResponsePage));
+        }
+        
+        // Default: Get all users with pagination (normal JPA query - sorting works)
+        Page<User> usersPage = userService.getUsersWithPagination(pageableDefault);
         Page<UserResponse> userResponsePage = usersPage.map(this::convertToUserResponse);
         
         return ResponseEntity.ok(BaseResponse.success("Users retrieved successfully", userResponsePage));
@@ -207,74 +302,6 @@ public class UserController {
     }
 
     /**
-     * Search users by keyword (Admin only)
-     * @param keyword - Search keyword for username, email, or full name
-     * @return List of matching users
-     */
-    @GetMapping("/search")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<List<UserResponse>>> searchUsers(
-            @RequestParam(required = false) String keyword) {
-        
-        List<User> users = userService.searchUsers(keyword);
-        List<UserResponse> userResponses = users.stream()
-                .map(this::convertToUserResponse)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(BaseResponse.success("Users retrieved successfully", userResponses));
-    }
-
-    /**
-     * Get users by role (Admin only)
-     * @param role - User role (ADMIN, LECTURER, STUDENT)
-     * @return List of users with the specified role
-     */
-    @GetMapping("/by-role/{role}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<List<UserResponse>>> getUsersByRole(@PathVariable String role) {
-        List<User> users = userService.getUsersByRole(role);
-        List<UserResponse> userResponses = users.stream()
-                .map(this::convertToUserResponse)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(BaseResponse.success(
-                "Users with role " + role.toUpperCase() + " retrieved successfully", userResponses));
-    }
-
-    /**
-     * Get users by status (Admin only)
-     * @param status - User status (ACTIVE, INACTIVE, VERIFICATION_PENDING)
-     * @return List of users with the specified status
-     */
-    @GetMapping("/by-status/{status}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<List<UserResponse>>> getUsersByStatus(@PathVariable String status) {
-        List<User> users = userService.getUsersByStatus(status);
-        List<UserResponse> userResponses = users.stream()
-                .map(this::convertToUserResponse)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(BaseResponse.success(
-                "Users with status " + status.toUpperCase() + " retrieved successfully", userResponses));
-    }
-
-    /**
-     * Get user by username (Admin only)
-     * @param username - Username to search for
-     * @return User information
-     */
-    @GetMapping("/by-username/{username}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<BaseResponse<UserResponse>> getUserByUsername(@PathVariable String username) {
-        User user = userService.getUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with username: " + username));
-
-        UserResponse userResponse = convertToUserResponse(user);
-
-        return ResponseEntity.ok(BaseResponse.success("User retrieved successfully", userResponse));
-    }
-
-    /**
      * Export all users to CSV file (Admin only)
      * @return CSV file download
      */
@@ -333,4 +360,5 @@ public class UserController {
         userResponse.setStatus(user.getStatus().toString());
         return userResponse;
     }
+    
 }

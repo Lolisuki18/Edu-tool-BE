@@ -83,15 +83,31 @@ public class LecturerService {
                 lecturers.getTotalElements()
         );
     }
-
-    public Page<LecturerResponse> searchLecturers(String keyword, Pageable pageable) {
-        Page<Lecturer> lecturers = lecturerRepository.searchByFullNameOrStaffCode(keyword, pageable);
+    /**
+     * Search lecturers with multiple filters (intersection of all conditions)
+     * @param fullName - Fuzzy search on fullName (null = ignored)
+     * @param staffCode - Fuzzy search on staffCode (null = ignored)
+     * @param keyword - Fuzzy search on fullName/staffCode/username/email (null = ignored)
+     * @param pageable - Pagination parameters
+     * @return Page of lecturers matching all applied filters
+     */
+    public Page<LecturerResponse> searchLecturersWithMultipleFilters(
+            String fullName, String staffCode, String keyword, Pageable pageable) {
+        
+        // Normalize empty strings to null
+        fullName = (fullName != null && fullName.trim().isEmpty()) ? null : fullName;
+        staffCode = (staffCode != null && staffCode.trim().isEmpty()) ? null : staffCode;
+        keyword = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
+        
+        Page<Lecturer> lecturersPage = lecturerRepository.searchLecturersWithMultipleFilters(
+                fullName, staffCode, keyword, pageable);
+        
         return new PageImpl<>(
-                lecturers.getContent().stream()
+                lecturersPage.getContent().stream()
                         .map(this::convertToResponse)
                         .collect(Collectors.toList()),
                 pageable,
-                lecturers.getTotalElements()
+                lecturersPage.getTotalElements()
         );
     }
 

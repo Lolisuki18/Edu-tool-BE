@@ -64,7 +64,7 @@ public class ProjectService {
     }
     
     /**
-     * Lấy project theo code
+     * Lấy project theo code (exact match)
      */
     public ProjectResponse getProjectByCode(String projectCode) {
         Project project = projectRepository.findByProjectCode(projectCode)
@@ -73,6 +73,20 @@ public class ProjectService {
         Long memberCount = enrollmentRepository.countByProject_ProjectId(project.getProjectId());
         
         return ProjectResponse.fromEntityWithMemberCount(project, memberCount);
+    }
+    
+    /**
+     * Search project theo code hoặc name (partial match)
+     */
+    public List<ProjectResponse> searchProjects(String keyword) {
+        List<Project> projects = projectRepository.searchByCodeOrName(keyword);
+        
+        return projects.stream()
+            .map(project -> {
+                Long memberCount = enrollmentRepository.countByProject_ProjectId(project.getProjectId());
+                return ProjectResponse.fromEntityWithMemberCount(project, memberCount);
+            })
+            .collect(Collectors.toList());
     }
     
     /**
@@ -129,10 +143,10 @@ public class ProjectService {
             Course newCourse = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + request.getCourseId()));
             
-            // Kiểm tra có sinh viên trong project không
-            Long memberCount = enrollmentRepository.countByProject_ProjectId(projectId);
+            // Kiểm tra có sinh viên trong project không (tính CẢ removed để tránh mất history)
+            Long memberCount = enrollmentRepository.countAllMembersByProject(projectId);
             if (memberCount > 0) {
-                throw new ValidationException("Cannot change course when project has members. Remove all members first.");
+                throw new ValidationException("Cannot change course when project has members (including removed). Remove all members first.");
             }
             
             project.setCourse(newCourse);
@@ -156,10 +170,10 @@ public class ProjectService {
         Project project = projectRepository.findActiveById(projectId)
             .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + projectId));
         
-        // Kiểm tra có sinh viên active trong project không
-        Long memberCount = enrollmentRepository.countByProject_ProjectId(projectId);
+        // Kiểm tra có bất kỳ enrollment nào reference đến project không (tính CẢ removed để tránh mất history)
+        Long memberCount = enrollmentRepository.countAllMembersByProject(projectId);
         if (memberCount > 0) {
-            throw new ValidationException("Cannot delete project with active members. Remove all members first.");
+            throw new ValidationException("Cannot delete project with members (including removed). Remove all members first.");
         }
         
         // Soft delete

@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/changes/14-add-enrollment-unique-constraint.yaml
   - include:
       file: db/changelog/changes/15-add-status-to-courses.yaml
+  - include:
+      file: db/changelog/changes/16-add-enrollment-indexes.yaml

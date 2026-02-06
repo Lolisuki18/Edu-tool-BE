@@ -42,4 +42,10 @@ public interface ProjectRepository extends JpaRepository<Project, Integer> {
     // Lấy project đã bị xóa (cho admin xem)
     @Query("SELECT p FROM Project p WHERE p.deletedAt IS NOT NULL ORDER BY p.deletedAt DESC")
     List<Project> findDeleted();
+    
+    // Search project theo code hoặc name (partial match)
+    @Query("SELECT p FROM Project p WHERE p.deletedAt IS NULL " +
+           "AND (LOWER(p.projectCode) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "OR LOWER(p.projectName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<Project> searchByCodeOrName(@Param("keyword") String keyword);
 }

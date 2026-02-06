@@ -103,7 +103,7 @@ public class CourseEnrollmentController {
     
     @PatchMapping("/{enrollmentId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
-    @Operation(summary = "Thực hiện actions trên enrollment: restore, remove-from-project, restore-to-project")
+    @Operation(summary = "Thực hiện actions trên enrollment: restore, remove-from-project, restore-to-project, completely-remove-from-project")
     public ResponseEntity<BaseResponse<EnrollmentResponse>> patchEnrollment(
             @PathVariable Integer enrollmentId,
             @RequestParam String action) {
@@ -125,9 +125,14 @@ public class CourseEnrollmentController {
                 return ResponseEntity.ok(BaseResponse.success(
                     "Student restored to project successfully", response));
             
+            case "completely-remove-from-project":
+                response = enrollmentService.completelyRemoveFromProjectById(enrollmentId);
+                return ResponseEntity.ok(BaseResponse.success(
+                    "Student completely removed from project. Can now be assigned to new project.", response));
+            
             default:
                 return ResponseEntity.badRequest()
-                    .body(BaseResponse.error("Invalid action. Supported actions: restore, remove-from-project, restore-to-project"));
+                    .body(BaseResponse.error("Invalid action. Supported actions: restore, remove-from-project, restore-to-project, completely-remove-from-project"));
         }
     }
     

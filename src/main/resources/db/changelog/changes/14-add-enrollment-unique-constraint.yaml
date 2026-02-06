@@ -1,7 +1,13 @@
 databaseChangeLog:
   - changeSet:
-      id: 10
+      id: 14
       author: edutool
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: course_enrollments
+                constraintName: uk_enrollment_student_course
       changes:
         - addUniqueConstraint:
             tableName: course_enrollments

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 15
+      author: system
+      changes:
+        - addColumn:
+            tableName: courses
+            columns:
+              - column:
+                  name: status
+                  type: boolean
+                  defaultValueBoolean: true

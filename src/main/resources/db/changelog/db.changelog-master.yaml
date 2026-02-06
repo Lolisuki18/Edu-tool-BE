@@ -25,3 +25,5 @@ databaseChangeLog:
       file: db/changelog/changes/13-add-status-to-periodic-reports.yaml
   - include:
       file: db/changelog/changes/14-add-enrollment-unique-constraint.yaml
+  - include:
+      file: db/changelog/changes/15-add-status-to-courses.yaml

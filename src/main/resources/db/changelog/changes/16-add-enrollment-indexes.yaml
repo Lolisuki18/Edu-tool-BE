@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 16
+      author: edutool
+      comment: Add indexes for enrollment query performance (removedFromProjectAt and composite)
+      changes:
+        # Index cho query l\u1ecdc removed students
+        - createIndex:
+            indexName: idx_removed_from_project
+            tableName: course_enrollments
+            columns:
+              - column:
+                  name: removed_from_project_at
+                  
+        # Composite index cho query active members by project
+        - createIndex:
+            indexName: idx_project_active
+            tableName: course_enrollments
+            columns:
+              - column:
+                  name: project_id
+              - column:
+                  name: removed_from_project_at
+      
+      rollback:
+        - dropIndex:
+            indexName: idx_removed_from_project
+            tableName: course_enrollments
+        - dropIndex:
+            indexName: idx_project_active
+            tableName: course_enrollments

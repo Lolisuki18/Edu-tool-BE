@@ -10,12 +10,17 @@ import com.edutool.dto.request.ChangeEmailRequest;
 import com.edutool.dto.request.ChangePasswordRequest;
 import com.edutool.dto.request.CreateUserRequest;
 import com.edutool.dto.request.UpdateUserRequest;
+import com.edutool.model.Lecturer;
 import com.edutool.model.Role;
+import com.edutool.model.Student;
 import com.edutool.model.User;
 import com.edutool.model.UserStatus;
+import com.edutool.repository.LecturerRepository;
+import com.edutool.repository.StudentRepository;
 import com.edutool.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ObjectInputFilter.Status;
 import java.time.LocalDateTime;
@@ -28,6 +33,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StudentRepository studentRepository;
+    private final LecturerRepository lecturerRepository;
 
     public User save(User user) {
         return userRepository.save(user);
@@ -38,6 +45,7 @@ public class UserService {
      * @param request - User creation data
      * @return Created user
      */
+    @Transactional
     public User createUser(CreateUserRequest request) {
         // Check if username already exists
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -58,7 +66,9 @@ public class UserService {
         user.setStatus(UserStatus.valueOf(request.getStatus().toUpperCase()));
         user.setCreatedAt(LocalDateTime.now());
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        createRoleProfileIfNotExists(savedUser, savedUser.getRole());
+        return savedUser;
     }
 
     /**
@@ -93,6 +103,7 @@ public class UserService {
      * @param request - Update data
      * @return Updated user
      */
+    @Transactional
     public User updateUser(Long userId, UpdateUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
@@ -136,7 +147,11 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        if (request.getRole() != null) {
+            createRoleProfileIfNotExists(savedUser, savedUser.getRole());
+        }
+        return savedUser;
     }
 
     /**
@@ -156,6 +171,7 @@ public class UserService {
      * @param role - New role to assign (ADMIN, LECTURER, STUDENT)
      * @return Updated user
      */
+    @Transactional
     public User updateUserRole(Long userId, String role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
@@ -163,7 +179,9 @@ public class UserService {
         try {
             Role newRole = Role.valueOf(role.toUpperCase());
             user.setRole(newRole);
-            return userRepository.save(user);
+            User savedUser = userRepository.save(user);
+            createRoleProfileIfNotExists(savedUser, newRole);
+            return savedUser;
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid role. Allowed values: ADMIN, LECTURER, STUDENT");
         }
@@ -285,5 +303,35 @@ public class UserService {
         
         // Call repository method that implements intersection logic
         return userRepository.searchUsersWithMultipleFilters(username, email, fullName, keyword, role, status, pageable);
+    }
+
+    // -----------------------------------------------------------------------
+    // Private helpers: auto-create Student/Lecturer profile on role assignment
+    // -----------------------------------------------------------------------
+
+    private void createRoleProfileIfNotExists(User user, Role role) {
+        if (role == Role.STUDENT) {
+            createStudentProfileIfNotExists(user);
+        } else if (role == Role.LECTURER) {
+            createLecturerProfileIfNotExists(user);
+        }
+    }
+
+    private void createStudentProfileIfNotExists(User user) {
+        if (studentRepository.findByUserUserId(user.getUserId()).isEmpty()) {
+            Student student = new Student();
+            student.setUser(user);
+            student.setStudentCode("SV" + user.getUserId());
+            studentRepository.save(student);
+        }
+    }
+
+    private void createLecturerProfileIfNotExists(User user) {
+        if (lecturerRepository.findByUserUserId(user.getUserId()).isEmpty()) {
+            Lecturer lecturer = new Lecturer();
+            lecturer.setUser(user);
+            lecturer.setStaffCode("GV" + user.getUserId());
+            lecturerRepository.save(lecturer);
+        }
     }
 }

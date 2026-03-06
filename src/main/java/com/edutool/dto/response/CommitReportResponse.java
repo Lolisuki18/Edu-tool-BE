@@ -19,6 +19,7 @@ public class CommitReportResponse {
     private String generatedAt;
     private DiagnosticInfo diagnostic;
     private List<StudentSummary> summary;
+    private List<StudentRepoSummary> summaryByRepository;
     private List<WeeklyDetail> weeklyDetails;
 
     @Data
@@ -63,6 +64,22 @@ public class CommitReportResponse {
         private int totalAdditions;
         private int totalDeletions;
         private double avgCommitsPerWeek;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StudentRepoSummary {
+        private String group;
+        private String studentCode;
+        private String fullName;
+        private String githubUsername;
+        private String role;
+        private String repository;
+        private int totalCommits;
+        private int totalAdditions;
+        private int totalDeletions;
     }
 
     @Data

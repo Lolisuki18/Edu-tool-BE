@@ -664,9 +664,13 @@ public class GithubApiService {
                         r -> r.getOwner() + "/" + r.getRepoName()));
 
         List<CommitReportResponse.WeeklyDetail> weeklyList = new ArrayList<>();
+        List<CommitReportResponse.StudentRepoSummary> summaryByRepo = new ArrayList<>();
+
         for (StudentStats s : sorted) {
             for (Map.Entry<Integer, TreeMap<Integer, WeekStat>> repoEntry : s.weeklyDetails.entrySet()) {
                 String repoLabel = repoNames.getOrDefault(repoEntry.getKey(), "repo-" + repoEntry.getKey());
+
+                int repoCommits = 0, repoAdditions = 0, repoDeletions = 0;
                 for (Map.Entry<Integer, WeekStat> weekEntry : repoEntry.getValue().entrySet()) {
                     int year = weekEntry.getKey() / 100;
                     int week = weekEntry.getKey() % 100;
@@ -683,7 +687,22 @@ public class GithubApiService {
                             .additions(ws.additions)
                             .deletions(ws.deletions)
                             .build());
+                    repoCommits    += ws.commits;
+                    repoAdditions  += ws.additions;
+                    repoDeletions  += ws.deletions;
                 }
+
+                summaryByRepo.add(CommitReportResponse.StudentRepoSummary.builder()
+                        .group(s.groupNumber != null ? "Group " + s.groupNumber : "")
+                        .studentCode(s.student.getStudentCode())
+                        .fullName(s.student.getUser().getFullName())
+                        .githubUsername(s.student.getGithubUsername())
+                        .role(s.roleInProject != null ? s.roleInProject : "")
+                        .repository(repoLabel)
+                        .totalCommits(repoCommits)
+                        .totalAdditions(repoAdditions)
+                        .totalDeletions(repoDeletions)
+                        .build());
             }
         }
 
@@ -699,6 +718,7 @@ public class GithubApiService {
                 .generatedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                 .diagnostic(diagnostic)
                 .summary(summaryList)
+                .summaryByRepository(summaryByRepo)
                 .weeklyDetails(weeklyList)
                 .build();
     }

@@ -1,5 +1,6 @@
 package com.edutool.service;
 
+import com.edutool.dto.response.CommitReportResponse;
 import com.edutool.exception.ResourceNotFoundException;
 import com.edutool.exception.ValidationException;
 import com.edutool.model.CommitContribution;
@@ -178,6 +179,92 @@ public class GithubApiService {
 
         // 5. Generate CSV
         return buildCsv(repos, statsByLogin, since, until, projectId, repoDiagnostic, hasToken);
+    }
+
+    /**
+     * Same logic as {@link #generateCommitCsvReport} but returns a structured
+     * {@link CommitReportResponse} JSON object — easier for frontend to consume.
+     */
+    @Transactional
+    public CommitReportResponse generateCommitJsonReport(
+            Integer projectId, String since, String until) {
+
+        List<GithubRepository> repos = repoRepository.findByProject_ProjectId(projectId);
+        if (repos.isEmpty()) {
+            throw new ValidationException(
+                    "No repositories found for project ID: " + projectId
+                            + ". Please submit at least one GitHub repository first.");
+        }
+
+        List<CourseEnrollment> enrollments = enrollmentRepository.findByProject_ProjectId(projectId);
+        if (enrollments.isEmpty()) {
+            throw new ValidationException("No students are enrolled in project ID: " + projectId);
+        }
+
+        Map<String, StudentStats> statsByLogin = new LinkedHashMap<>();
+        for (CourseEnrollment e : enrollments) {
+            Student s = e.getStudent();
+            if (s.getGithubUsername() != null && !s.getGithubUsername().isBlank()) {
+                String key = s.getGithubUsername().toLowerCase(Locale.ROOT);
+                statsByLogin.put(key, new StudentStats(s, e.getRoleInProject(), e.getGroupNumber()));
+            }
+        }
+
+        Long sinceEpoch = since != null && !since.isBlank()
+                ? LocalDate.parse(since).atStartOfDay(ZoneOffset.UTC).toEpochSecond() : null;
+        Long untilEpoch = until != null && !until.isBlank()
+                ? LocalDate.parse(until).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).getEpochSecond() : null;
+
+        boolean hasToken = githubToken != null && !githubToken.isBlank();
+        Map<Integer, String> repoDiagnostic = new LinkedHashMap<>();
+
+        for (GithubRepository repo : repos) {
+            List<Map<String, Object>> contributors = Collections.emptyList();
+            String diagnostic;
+
+            try {
+                contributors = fetchContributorStats(repo.getOwner(), repo.getRepoName());
+            } catch (Exception ex) {
+                String msg = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName();
+                log.warn("stats/contributors failed for {}/{}: {}", repo.getOwner(), repo.getRepoName(), msg);
+                if (msg.contains("404")) {
+                    diagnostic = "ERROR 404: repo không tìm thấy hoặc là private";
+                } else if (msg.contains("401") || msg.contains("403")) {
+                    diagnostic = "ERROR " + (msg.contains("401") ? "401" : "403") + ": token không hợp lệ hay hết hạn";
+                } else {
+                    diagnostic = "ERROR: " + msg;
+                }
+                repoDiagnostic.put(repo.getRepoId(), diagnostic);
+                continue;
+            }
+
+            if (!contributors.isEmpty()) {
+                List<String> rawLogins = new ArrayList<>();
+                for (Map<String, Object> c : contributors) {
+                    String login = extractLogin(c);
+                    if (login != null) rawLogins.add(login);
+                }
+                diagnostic = String.join(", ", rawLogins);
+                accumulateContributorStats(contributors, statsByLogin, repo, sinceEpoch, untilEpoch);
+            } else {
+                List<String> commitLogins = accumulateFromCommitsApi(repo, statsByLogin, sinceEpoch, untilEpoch);
+                if (commitLogins.isEmpty()) {
+                    diagnostic = hasToken
+                            ? "still computing — gọi lại sau 30s"
+                            : "chưa set GITHUB_TOKEN — set env variable rồi restart server";
+                } else {
+                    diagnostic = String.join(", ", commitLogins) + " [via /commits API — additions/deletions=0]";
+                }
+            }
+
+            repoDiagnostic.put(repo.getRepoId(), diagnostic);
+        }
+
+        for (GithubRepository repo : repos) {
+            persistWeeklyContributions(repo, statsByLogin);
+        }
+
+        return buildJsonReport(repos, statsByLogin, since, until, projectId, repoDiagnostic, hasToken);
     }
 
     // =========================================================================
@@ -520,6 +607,100 @@ public class GithubApiService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate CSV report", e);
         }
+    }
+
+    private CommitReportResponse buildJsonReport(
+            List<GithubRepository> repos,
+            Map<String, StudentStats> statsByLogin,
+            String since, String until,
+            Integer projectId,
+            Map<Integer, String> repoDiagnostic,
+            boolean hasToken) {
+
+        // Diagnostic repos
+        List<CommitReportResponse.RepoDiagnostic> diagRepos = new ArrayList<>();
+        for (GithubRepository repo : repos) {
+            String info = repoDiagnostic.getOrDefault(repo.getRepoId(), "(not fetched)");
+            diagRepos.add(CommitReportResponse.RepoDiagnostic.builder()
+                    .repository(repo.getOwner() + "/" + repo.getRepoName())
+                    .status(info)
+                    .build());
+        }
+
+        CommitReportResponse.DiagnosticInfo diagnostic = CommitReportResponse.DiagnosticInfo.builder()
+                .githubTokenConfigured(hasToken)
+                .repositories(diagRepos)
+                .registeredGithubUsernames(new ArrayList<>(statsByLogin.keySet()))
+                .build();
+
+        // Summary
+        List<StudentStats> sorted = statsByLogin.values().stream()
+                .sorted(Comparator.comparing(s -> s.student.getStudentCode()))
+                .collect(Collectors.toList());
+
+        List<CommitReportResponse.StudentSummary> summaryList = new ArrayList<>();
+        for (StudentStats s : sorted) {
+            long weekCount = s.weeklyDetails.values().stream()
+                    .mapToLong(Map::size).sum();
+            double avgCommitsPerWeek = weekCount > 0
+                    ? (double) s.totalCommits / weekCount : 0.0;
+
+            summaryList.add(CommitReportResponse.StudentSummary.builder()
+                    .group(s.groupNumber != null ? "Group " + s.groupNumber : "")
+                    .studentCode(s.student.getStudentCode())
+                    .fullName(s.student.getUser().getFullName())
+                    .githubUsername(s.student.getGithubUsername())
+                    .role(s.roleInProject != null ? s.roleInProject : "")
+                    .totalCommits(s.totalCommits)
+                    .totalAdditions(s.totalAdditions)
+                    .totalDeletions(s.totalDeletions)
+                    .avgCommitsPerWeek(Math.round(avgCommitsPerWeek * 100.0) / 100.0)
+                    .build());
+        }
+
+        // Weekly details
+        Map<Integer, String> repoNames = repos.stream()
+                .collect(Collectors.toMap(GithubRepository::getRepoId,
+                        r -> r.getOwner() + "/" + r.getRepoName()));
+
+        List<CommitReportResponse.WeeklyDetail> weeklyList = new ArrayList<>();
+        for (StudentStats s : sorted) {
+            for (Map.Entry<Integer, TreeMap<Integer, WeekStat>> repoEntry : s.weeklyDetails.entrySet()) {
+                String repoLabel = repoNames.getOrDefault(repoEntry.getKey(), "repo-" + repoEntry.getKey());
+                for (Map.Entry<Integer, WeekStat> weekEntry : repoEntry.getValue().entrySet()) {
+                    int year = weekEntry.getKey() / 100;
+                    int week = weekEntry.getKey() % 100;
+                    WeekStat ws = weekEntry.getValue();
+                    weeklyList.add(CommitReportResponse.WeeklyDetail.builder()
+                            .group(s.groupNumber != null ? "Group " + s.groupNumber : "")
+                            .studentCode(s.student.getStudentCode())
+                            .fullName(s.student.getUser().getFullName())
+                            .githubUsername(s.student.getGithubUsername())
+                            .repository(repoLabel)
+                            .year(year)
+                            .week(week)
+                            .commits(ws.commits)
+                            .additions(ws.additions)
+                            .deletions(ws.deletions)
+                            .build());
+                }
+            }
+        }
+
+        return CommitReportResponse.builder()
+                .projectId(projectId)
+                .repositories(repos.stream()
+                        .map(r -> r.getOwner() + "/" + r.getRepoName())
+                        .collect(Collectors.toList()))
+                .period(CommitReportResponse.PeriodInfo.builder()
+                        .since(since != null ? since : "All")
+                        .until(until != null ? until : "Now")
+                        .build())
+                .generatedAt(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .diagnostic(diagnostic)
+                .summary(summaryList)
+                .weeklyDetails(weeklyList)
+                .build();
     }
 
     // =========================================================================

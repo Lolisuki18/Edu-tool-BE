@@ -1,9 +1,13 @@
 package com.edutool.controller;
 
 import com.edutool.dto.request.GithubRepositoryRequest;
+import com.edutool.dto.request.CommitReportRequest;
 import com.edutool.dto.response.BaseResponse;
+import com.edutool.dto.response.CommitReportResponse;
+import com.edutool.dto.response.CommitReportUrlResponse;
 import com.edutool.dto.response.GroupRepositoryResponse;
 import com.edutool.dto.response.GithubRepositoryResponse;
+import com.edutool.service.CommitReportService;
 import com.edutool.service.GithubApiService;
 import com.edutool.service.GithubRepositoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +36,7 @@ public class GithubRepositoryController {
 
     private final GithubRepositoryService repositoryService;
     private final GithubApiService githubApiService;
+    private final CommitReportService commitReportService;
 
     // -------------------------------------------------------------------------
     //  CRUD
@@ -162,5 +167,64 @@ public class GithubRepositoryController {
                 .headers(headers)
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(new InputStreamResource(csvStream));
+    }
+
+    @GetMapping("/project/{projectId}/report/json")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @Operation(summary = "Xuất báo cáo commit JSON",
+               description = "Trả về dữ liệu commit statistics dạng JSON thay vì CSV, " +
+                              "giúp frontend dễ dàng hiển thị và xử lý dữ liệu.")
+    public ResponseEntity<BaseResponse<CommitReportResponse>> generateJsonReport(
+            @PathVariable Integer projectId,
+            @Parameter(description = "Từ ngày (yyyy-MM-dd), bỏ trống = không giới hạn")
+            @RequestParam(required = false) String since,
+            @Parameter(description = "Đến ngày (yyyy-MM-dd), bỏ trống = không giới hạn")
+            @RequestParam(required = false) String until) {
+
+        CommitReportResponse report = githubApiService.generateCommitJsonReport(
+                projectId, since, until);
+
+        return ResponseEntity.ok(BaseResponse.success("Report generated successfully", report));
+    }
+
+    // -------------------------------------------------------------------------
+    //  Commit Report Storage URL
+    // -------------------------------------------------------------------------
+
+    @PostMapping("/project/{projectId}/report/storage-url")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @Operation(summary = "Lưu URL báo cáo commit từ Supabase",
+               description = "Sau khi FE upload file CSV lên Supabase Storage, gọi API này để lưu URL vào DB.")
+    public ResponseEntity<BaseResponse<CommitReportUrlResponse>> saveReportUrl(
+            @PathVariable Integer projectId,
+            @Valid @RequestBody CommitReportRequest request) {
+
+        request.setProjectId(projectId);
+        CommitReportUrlResponse response = commitReportService.saveReportUrl(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponse.success("Report URL saved successfully", response));
+    }
+
+    @GetMapping("/project/{projectId}/report/storage-url")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @Operation(summary = "Lấy danh sách URL báo cáo commit đã lưu",
+               description = "Trả về lịch sử tất cả các báo cáo CSV đã upload lên Supabase cho project này.")
+    public ResponseEntity<BaseResponse<List<CommitReportUrlResponse>>> getReportUrls(
+            @PathVariable Integer projectId) {
+
+        List<CommitReportUrlResponse> responses = commitReportService.getReportsByProject(projectId);
+        return ResponseEntity.ok(BaseResponse.success(
+                "Retrieved " + responses.size() + " report(s)", responses));
+    }
+
+    @DeleteMapping("/project/{projectId}/report/storage-url/{commitReportId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER')")
+    @Operation(summary = "Xóa URL báo cáo commit",
+               description = "Xóa một bản ghi commit report đã lưu theo ID.")
+    public ResponseEntity<BaseResponse<Void>> deleteReportUrl(
+            @PathVariable Integer projectId,
+            @PathVariable Integer commitReportId) {
+        commitReportService.deleteReport(projectId, commitReportId);
+        return ResponseEntity.ok(BaseResponse.success("Report URL deleted successfully", null));
     }
 }

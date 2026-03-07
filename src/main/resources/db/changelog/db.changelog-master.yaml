@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/changes/15-add-status-to-courses.yaml
   - include:
       file: db/changelog/changes/16-create-commit-reports-table.yaml
+  - include:
+      file: db/changelog/changes/17-add-enrollment-indexes.yaml

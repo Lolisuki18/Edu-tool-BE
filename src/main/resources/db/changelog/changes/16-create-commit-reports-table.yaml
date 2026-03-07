@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 16-create-commit-reports-table
+      author: edutool
+      changes:
+        - createTable:
+            tableName: commit_reports
+            columns:
+              - column:
+                  name: commit_report_id
+                  type: SERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: project_id
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_commit_reports_project
+                    references: projects(project_id)
+              - column:
+                  name: storage_url
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_key
+                  type: VARCHAR(500)
+              - column:
+                  name: storage_id
+                  type: VARCHAR(255)
+              - column:
+                  name: since_date
+                  type: DATE
+              - column:
+                  name: until_date
+                  type: DATE
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            tableName: commit_reports
+            indexName: idx_commit_reports_project_id
+            columns:
+              - column:
+                  name: project_id

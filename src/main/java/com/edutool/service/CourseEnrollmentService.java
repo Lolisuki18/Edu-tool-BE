@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,10 +43,18 @@ public class CourseEnrollmentService {
         Course course = courseRepository.findById(request.getCourseId())
             .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + request.getCourseId()));
         
-        // 3. Kiểm tra không được enroll trùng
-        if (enrollmentRepository.existsByStudent_StudentIdAndCourse_CourseId(
-                request.getStudentId(), request.getCourseId())) {
-            throw new ValidationException("Student is already enrolled in this course");
+        // 3. Kiểm tra enrollment kể cả soft-deleted (unique constraint trên DB áp dụng cho mọi row)
+        Optional<CourseEnrollment> existing = enrollmentRepository
+            .findByStudent_StudentIdAndCourse_CourseIdAny(request.getStudentId(), request.getCourseId());
+        
+        if (existing.isPresent()) {
+            CourseEnrollment e = existing.get();
+            if (e.getDeletedAt() == null) {
+                throw new ValidationException("Student is already enrolled in this course");
+            }
+            // Sinh viên đã từng enroll nhưng bị xóa → restore để tránh lỗi unique constraint
+            e.setDeletedAt(null);
+            return EnrollmentResponse.fromEntity(enrollmentRepository.save(e));
         }
         
         // Tạo enrollment mới

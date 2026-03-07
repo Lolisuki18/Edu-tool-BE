@@ -23,6 +23,12 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
            "WHERE e.student.studentId = :studentId AND e.course.courseId = :courseId AND e.deletedAt IS NULL")
     Optional<CourseEnrollment> findByStudent_StudentIdAndCourse_CourseId(@Param("studentId") Integer studentId, 
                                                                           @Param("courseId") Integer courseId);
+
+    // Lấy enrollment của sinh viên trong course kể cả soft-deleted (để tránh unique constraint violation khi re-enroll)
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.student.studentId = :studentId AND e.course.courseId = :courseId")
+    Optional<CourseEnrollment> findByStudent_StudentIdAndCourse_CourseIdAny(@Param("studentId") Integer studentId, 
+                                                                              @Param("courseId") Integer courseId);
     
     // Lấy tất cả enrollment của course (chỉ active)
     @Query("SELECT e FROM CourseEnrollment e WHERE e.course.courseId = :courseId AND e.deletedAt IS NULL")

@@ -10,9 +10,13 @@ import com.edutool.dto.request.ChangeEmailRequest;
 import com.edutool.dto.request.ChangePasswordRequest;
 import com.edutool.dto.request.CreateUserRequest;
 import com.edutool.dto.request.UpdateUserRequest;
+import com.edutool.model.Lecturer;
 import com.edutool.model.Role;
+import com.edutool.model.Student;
 import com.edutool.model.User;
 import com.edutool.model.UserStatus;
+import com.edutool.repository.LecturerRepository;
+import com.edutool.repository.StudentRepository;
 import com.edutool.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -27,6 +31,8 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final LecturerRepository lecturerRepository;
     private final PasswordEncoder passwordEncoder;
 
     public User save(User user) {
@@ -58,7 +64,30 @@ public class UserService {
         user.setStatus(UserStatus.valueOf(request.getStatus().toUpperCase()));
         user.setCreatedAt(LocalDateTime.now());
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Auto-create profile for STUDENT or LECTURER
+        if (savedUser.getRole() == Role.STUDENT) {
+            String studentCode = (request.getStudentCode() != null && !request.getStudentCode().isBlank())
+                    ? request.getStudentCode()
+                    : String.format("SE%06d", savedUser.getUserId());
+            Student student = new Student();
+            student.setUser(savedUser);
+            student.setStudentCode(studentCode);
+            student.setCreatedAt(LocalDateTime.now());
+            studentRepository.save(student);
+        } else if (savedUser.getRole() == Role.LECTURER) {
+            String staffCode = (request.getStaffCode() != null && !request.getStaffCode().isBlank())
+                    ? request.getStaffCode()
+                    : String.format("GV%03d", savedUser.getUserId());
+            Lecturer lecturer = new Lecturer();
+            lecturer.setUser(savedUser);
+            lecturer.setStaffCode(staffCode);
+            lecturer.setCreatedAt(LocalDateTime.now());
+            lecturerRepository.save(lecturer);
+        }
+
+        return savedUser;
     }
 
     /**

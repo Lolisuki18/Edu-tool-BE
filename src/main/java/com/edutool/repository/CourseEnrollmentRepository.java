@@ -23,6 +23,12 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
            "WHERE e.student.studentId = :studentId AND e.course.courseId = :courseId AND e.deletedAt IS NULL")
     Optional<CourseEnrollment> findByStudent_StudentIdAndCourse_CourseId(@Param("studentId") Integer studentId, 
                                                                           @Param("courseId") Integer courseId);
+
+    // Lấy enrollment của sinh viên trong course kể cả soft-deleted (để tránh unique constraint violation khi re-enroll)
+    @Query("SELECT e FROM CourseEnrollment e " +
+           "WHERE e.student.studentId = :studentId AND e.course.courseId = :courseId")
+    Optional<CourseEnrollment> findByStudent_StudentIdAndCourse_CourseIdAny(@Param("studentId") Integer studentId, 
+                                                                              @Param("courseId") Integer courseId);
     
     // Lấy tất cả enrollment của course (chỉ active)
     @Query("SELECT e FROM CourseEnrollment e WHERE e.course.courseId = :courseId AND e.deletedAt IS NULL")
@@ -43,10 +49,15 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
            "AND e.deletedAt IS NULL AND e.removedFromProjectAt IS NULL")
     List<CourseEnrollment> findByProject_ProjectId(@Param("projectId") Integer projectId);
     
-    // Đếm số sinh viên trong project (chỉ active)
+    // Đếm số sinh viên active trong project (không tính removed)
     @Query("SELECT COUNT(e) FROM CourseEnrollment e WHERE e.project.projectId = :projectId " +
            "AND e.deletedAt IS NULL AND e.removedFromProjectAt IS NULL")
     long countByProject_ProjectId(@Param("projectId") Integer projectId);
+    
+    // Đếm TẤT CẢ sinh viên có reference đến project (bao gồm cả removed - để validate xóa project)
+    @Query("SELECT COUNT(e) FROM CourseEnrollment e WHERE e.project.projectId = :projectId " +
+           "AND e.deletedAt IS NULL")
+    long countAllMembersByProject(@Param("projectId") Integer projectId);
     
     // Lấy lịch sử sinh viên đã bị xóa khỏi project
     @Query("SELECT e FROM CourseEnrollment e WHERE e.project.projectId = :projectId " +

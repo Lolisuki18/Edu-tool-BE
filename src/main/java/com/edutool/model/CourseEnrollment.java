@@ -14,7 +14,9 @@ import java.time.LocalDateTime;
         @Index(name = "idx_enrollment_student_id", columnList = "student_id"),
         @Index(name = "idx_enrollment_course_id", columnList = "course_id"),
         @Index(name = "idx_enrollment_project_id", columnList = "project_id"),
-        @Index(name = "idx_student_course", columnList = "student_id, course_id")
+        @Index(name = "idx_student_course", columnList = "student_id, course_id"),
+        @Index(name = "idx_removed_from_project", columnList = "removed_from_project_at"),
+        @Index(name = "idx_project_active", columnList = "project_id, removed_from_project_at")
     },
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_enrollment_student_course", 

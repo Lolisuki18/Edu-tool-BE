@@ -1,5 +1,13 @@
 package com.edutool.service;
 
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.edutool.dto.request.CreateStudentRequest;
 import com.edutool.dto.request.UpdateStudentRequest;
 import com.edutool.dto.response.StudentResponse;
@@ -7,18 +15,10 @@ import com.edutool.exception.ValidationException;
 import com.edutool.model.Role;
 import com.edutool.model.Student;
 import com.edutool.model.User;
-import com.edutool.model.UserStatus;
 import com.edutool.repository.StudentRepository;
 import com.edutool.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -155,13 +155,9 @@ public class StudentService {
     public void deleteStudent(Integer id) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ValidationException("Student not found"));
-        // Find user by student id
-        User user = student.getUser();
-        // Delete student by changing user status to INACTIVE
-        if (user != null && user.getStatus() != UserStatus.INACTIVE) {
-            user.setStatus(UserStatus.INACTIVE);
-        }        
-        userRepository.save(user);
+        // Delete student by setting isDeleted flag
+        student.setIsDeleted(true);
+        studentRepository.save(student);
     }
 
     private StudentResponse convertToResponse(Student student) {

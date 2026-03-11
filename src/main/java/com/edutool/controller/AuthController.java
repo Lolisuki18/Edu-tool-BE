@@ -28,11 +28,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
+    @Value("${app.cookie.secure:true}")
+    private boolean secureCookie;
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -88,8 +92,8 @@ public class AuthController {
         //Set refresh token cookie
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(true)           // HTTPS only
-                .sameSite("Strict")
+                .secure(secureCookie)   // false for local dev (HTTP), true for production (HTTPS)
+                .sameSite(secureCookie ? "Strict" : "Lax")
                 .path("/auth/refresh")
                 .build();
 

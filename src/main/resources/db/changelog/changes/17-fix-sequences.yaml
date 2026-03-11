@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 17
+      author: system
+      comment: Fix sequences for all tables after initial data load with explicit IDs
+      changes:
+        - sqlFile:
+            path: db/changelog/sql/V17__fix_sequences.sql
+            splitStatements: true
+            stripComments: true

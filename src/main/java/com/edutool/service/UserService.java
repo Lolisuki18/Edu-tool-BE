@@ -1,7 +1,6 @@
 package com.edutool.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,6 @@ import com.edutool.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ObjectInputFilter.Status;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -67,7 +65,28 @@ public class UserService {
         user.setCreatedAt(LocalDateTime.now());
 
         User savedUser = userRepository.save(user);
-        createRoleProfileIfNotExists(savedUser, savedUser.getRole());
+
+        // Auto-create profile for STUDENT or LECTURER
+        if (savedUser.getRole() == Role.STUDENT) {
+            String studentCode = (request.getStudentCode() != null && !request.getStudentCode().isBlank())
+                    ? request.getStudentCode()
+                    : String.format("SE%06d", savedUser.getUserId());
+            Student student = new Student();
+            student.setUser(savedUser);
+            student.setStudentCode(studentCode);
+            student.setCreatedAt(LocalDateTime.now());
+            studentRepository.save(student);
+        } else if (savedUser.getRole() == Role.LECTURER) {
+            String staffCode = (request.getStaffCode() != null && !request.getStaffCode().isBlank())
+                    ? request.getStaffCode()
+                    : String.format("GV%03d", savedUser.getUserId());
+            Lecturer lecturer = new Lecturer();
+            lecturer.setUser(savedUser);
+            lecturer.setStaffCode(staffCode);
+            lecturer.setCreatedAt(LocalDateTime.now());
+            lecturerRepository.save(lecturer);
+        }
+
         return savedUser;
     }
 

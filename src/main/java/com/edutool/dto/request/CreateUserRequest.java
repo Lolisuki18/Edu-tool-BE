@@ -34,4 +34,10 @@ public class CreateUserRequest {
 
     @Pattern(regexp = "ACTIVE|INACTIVE|SUSPENDED", message = "Status must be ACTIVE, INACTIVE, or SUSPENDED")
     private String status = "ACTIVE"; // Default status
+
+    // Optional – dùng khi role = STUDENT (nếu không cung cấp, sẽ dùng username làm mã mặc định)
+    private String studentCode;
+
+    // Optional – dùng khi role = LECTURER (nếu không cung cấp, sẽ dùng username làm mã mặc định)
+    private String staffCode;
 }

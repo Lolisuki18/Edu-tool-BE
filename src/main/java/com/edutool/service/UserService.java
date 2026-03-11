@@ -30,8 +30,6 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final StudentRepository studentRepository;
-    private final LecturerRepository lecturerRepository;
     private final PasswordEncoder passwordEncoder;
     private final StudentRepository studentRepository;
     private final LecturerRepository lecturerRepository;

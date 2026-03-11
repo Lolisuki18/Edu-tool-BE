@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,10 +43,18 @@ public class CourseEnrollmentService {
         Course course = courseRepository.findById(request.getCourseId())
             .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + request.getCourseId()));
         
-        // 3. Kiểm tra không được enroll trùng
-        if (enrollmentRepository.existsByStudent_StudentIdAndCourse_CourseId(
-                request.getStudentId(), request.getCourseId())) {
-            throw new ValidationException("Student is already enrolled in this course");
+        // 3. Kiểm tra enrollment kể cả soft-deleted (unique constraint trên DB áp dụng cho mọi row)
+        Optional<CourseEnrollment> existing = enrollmentRepository
+            .findByStudent_StudentIdAndCourse_CourseIdAny(request.getStudentId(), request.getCourseId());
+        
+        if (existing.isPresent()) {
+            CourseEnrollment e = existing.get();
+            if (e.getDeletedAt() == null) {
+                throw new ValidationException("Student is already enrolled in this course");
+            }
+            // Sinh viên đã từng enroll nhưng bị xóa → restore để tránh lỗi unique constraint
+            e.setDeletedAt(null);
+            return EnrollmentResponse.fromEntity(enrollmentRepository.save(e));
         }
         
         // Tạo enrollment mới
@@ -69,7 +78,7 @@ public class CourseEnrollmentService {
         
         CourseEnrollment enrollment;
         
-        // Nếu có enrollmentId, dùng trực tiếp
+        // Nếu có enrollmentId, dùng trực tiếp với PESSIMISTIC LOCK để tránh race condition
         if (request.getEnrollmentId() != null) {
             enrollment = enrollmentRepository.findById(request.getEnrollmentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + request.getEnrollmentId()));
@@ -91,10 +100,24 @@ public class CourseEnrollmentService {
                     "Student must be enrolled in the course before being assigned to a project"));
         }
         
-        // 4. Kiểm tra SV chỉ có 1 project / course
-        if (enrollment.getProject() != null) {
-            throw new ValidationException("Student already has a project in this course. " +
+        // 4. Kiểm tra SV chỉ có 1 project ACTIVE / course
+        // Nếu đã có project và chưa bị removed → không cho assign
+        if (enrollment.getProject() != null && enrollment.getRemovedFromProjectAt() == null) {
+            throw new ValidationException("Student already has an active project in this course. " +
                 "Current project: " + enrollment.getProject().getProjectName());
+        }
+        
+        // 5. Xử lý student đã bị removed khỏi project cũ
+        if (enrollment.getProject() != null && enrollment.getRemovedFromProjectAt() != null) {
+            // Nếu assign vào CÙNG project → restore (chỉ clear removedFromProjectAt)
+            if (enrollment.getProject().getProjectId().equals(project.getProjectId())) {
+                enrollment.setRemovedFromProjectAt(null);
+            } else {
+                // Nếu assign vào project KHÁC → không cho (phải clear project hoàn toàn trước)
+                throw new ValidationException(
+                    "Student is still linked to removed project: " + enrollment.getProject().getProjectName() + 
+                    ". Use 'completely-remove-from-project' action first to clear history before assigning to new project.");
+            }
         }
         
         // Gán project cho enrollment
@@ -308,6 +331,28 @@ public class CourseEnrollmentService {
     }
     
     /**
+     * Clear hoàn toàn project reference khỏi enrollment (cho phép assign vào project mới)
+     */
+    @Transactional
+    public EnrollmentResponse completelyRemoveFromProjectById(Integer enrollmentId) {
+        CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
+            .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
+        
+        if (enrollment.getProject() == null) {
+            throw new ValidationException("Student is not assigned to any project");
+        }
+        
+        // Clear tất cả thông tin project
+        enrollment.setProject(null);
+        enrollment.setRemovedFromProjectAt(null);
+        enrollment.setRoleInProject(null);
+        enrollment.setGroupNumber(null);
+        
+        CourseEnrollment updatedEnrollment = enrollmentRepository.save(enrollment);
+        return EnrollmentResponse.fromEntity(updatedEnrollment);
+    }
+    
+    /**
      * Lấy lịch sử sinh viên đã bị xóa khỏi project
      */
     public List<EnrollmentResponse> getRemovedStudentsByProject(Integer projectId) {
@@ -369,7 +414,7 @@ public class CourseEnrollmentService {
         CourseEnrollment enrollment = enrollmentRepository.findById(enrollmentId)
             .orElseThrow(() -> new ResourceNotFoundException("Enrollment not found with ID: " + enrollmentId));
         
-        // Nếu có projectId mới
+        // Nếu có projectId mới - validate kỹ hơn
         if (request.getProjectId() != null) {
             // Kiểm tra project tồn tại và thuộc course
             Project newProject = projectRepository.findById(request.getProjectId())
@@ -379,7 +424,16 @@ public class CourseEnrollmentService {
                 throw new ValidationException("Project does not belong to this course");
             }
             
+            // Nếu đang có project active và muốn đổi sang project khác → không cho
+            if (enrollment.getProject() != null && 
+                enrollment.getRemovedFromProjectAt() == null && 
+                !enrollment.getProject().getProjectId().equals(request.getProjectId())) {
+                throw new ValidationException("Student already has an active project. Remove from current project first.");
+            }
+            
             enrollment.setProject(newProject);
+            // Clear removed timestamp nếu đang restore hoặc assign mới
+            enrollment.setRemovedFromProjectAt(null);
         }
         
         // Update role và group number nếu có

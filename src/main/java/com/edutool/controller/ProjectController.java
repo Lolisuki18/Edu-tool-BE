@@ -48,16 +48,17 @@ public class ProjectController {
     
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    @Operation(summary = "Lấy thông tin project theo code hoặc lấy tất cả projects")
+    @Operation(summary = "Search hoặc lấy thông tin project")
     public ResponseEntity<BaseResponse<?>> getProjects(
-            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) Integer courseId,
             @RequestParam(required = false, defaultValue = "false") Boolean deleted) {
         
-        // Nếu có code, lấy theo code
-        if (code != null) {
-            ProjectResponse response = projectService.getProjectByCode(code);
-            return ResponseEntity.ok(BaseResponse.success("Project retrieved successfully", response));
+        // Nếu có search, tìm kiếm theo code hoặc name (partial match)
+        if (search != null && !search.trim().isEmpty()) {
+            List<ProjectResponse> projects = projectService.searchProjects(search);
+            return ResponseEntity.ok(BaseResponse.success(
+                "Found " + projects.size() + " projects", projects));
         }
         
         // Nếu có courseId, lấy theo course

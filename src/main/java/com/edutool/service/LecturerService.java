@@ -1,23 +1,23 @@
 package com.edutool.service;
 
-import com.edutool.dto.request.CreateLecturerRequest;
-import com.edutool.dto.request.UpdateLecturerRequest;
-import com.edutool.dto.response.LecturerResponse;
-import com.edutool.exception.ValidationException;
-import com.edutool.model.Lecturer;
-import com.edutool.model.User;
-import com.edutool.model.UserStatus;
-import com.edutool.repository.LecturerRepository;
-import com.edutool.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import com.edutool.dto.request.CreateLecturerRequest;
+import com.edutool.dto.request.UpdateLecturerRequest;
+import com.edutool.dto.response.LecturerResponse;
+import com.edutool.exception.ValidationException;
+import com.edutool.model.Lecturer;
+import com.edutool.model.User;
+import com.edutool.repository.LecturerRepository;
+import com.edutool.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -131,13 +131,9 @@ public class LecturerService {
     public void deleteLecturer(Integer id) {
         Lecturer lecturer = lecturerRepository.findById(id)
                 .orElseThrow(() -> new ValidationException("Lecturer not found"));
-        // Find user by lecturer
-        User user = lecturer.getUser();
-        // Delete lecturer by changing user status to INACTIVE
-        if (user != null && user.getStatus() != UserStatus.INACTIVE) {
-            user.setStatus(UserStatus.INACTIVE);
-            userRepository.save(user);
-        }
+        // Delete lecturer by setting isDeleted flag
+        lecturer.setIsDeleted(true);
+        lecturerRepository.save(lecturer);
     }
 
     private LecturerResponse convertToResponse(Lecturer lecturer) {

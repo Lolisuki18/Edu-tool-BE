@@ -1,9 +1,14 @@
 package com.edutool.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.edutool.dto.request.ChangeEmailRequest;
 import com.edutool.dto.request.ChangePasswordRequest;
@@ -19,11 +24,6 @@ import com.edutool.repository.StudentRepository;
 import com.edutool.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -145,6 +145,22 @@ public class UserService {
         if (request.getRole() != null) {
             try {
                 Role newRole = Role.valueOf(request.getRole().toUpperCase());
+                // change profile if role changed
+                if (user.getRole() != newRole) {
+                    createRoleProfileIfNotExists(user, newRole);
+                    //set old profile to deleted if role changed
+                    if (user.getRole() == Role.STUDENT) {
+                        studentRepository.findByUserUserId(userId).ifPresent(student -> {
+                            student.setIsDeleted(true);
+                            studentRepository.save(student);
+                        });
+                    } else if (user.getRole() == Role.LECTURER) {
+                        lecturerRepository.findByUserUserId(userId).ifPresent(lecturer -> {
+                            lecturer.setIsDeleted(true);
+                            lecturerRepository.save(lecturer);
+                        });
+                    }
+                }
                 user.setRole(newRole);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Invalid role. Allowed values: ADMIN, LECTURER, STUDENT");
@@ -197,9 +213,24 @@ public class UserService {
         
         try {
             Role newRole = Role.valueOf(role.toUpperCase());
+            // If role changed, handle profile creation/deletion
+            if (user.getRole() != newRole) {
+                createRoleProfileIfNotExists(user, newRole);
+                // Set old profile to deleted if role changed
+                if (user.getRole() == Role.STUDENT) {
+                    studentRepository.findByUserUserId(userId).ifPresent(student -> {
+                        student.setIsDeleted(true);
+                        studentRepository.save(student);
+                    });
+                } else if (user.getRole() == Role.LECTURER) {
+                    lecturerRepository.findByUserUserId(userId).ifPresent(lecturer -> {
+                        lecturer.setIsDeleted(true);
+                        lecturerRepository.save(lecturer);
+                    });
+                }
+            }
             user.setRole(newRole);
             User savedUser = userRepository.save(user);
-            createRoleProfileIfNotExists(savedUser, newRole);
             return savedUser;
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid role. Allowed values: ADMIN, LECTURER, STUDENT");

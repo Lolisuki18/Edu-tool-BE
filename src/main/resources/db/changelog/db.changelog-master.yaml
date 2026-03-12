@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/changes/17-add-enrollment-indexes.yaml
   - include:
       file: db/changelog/changes/17-fix-sequences.yaml
+  - include:
+      file: db/changelog/changes/18-add-soft-delete-student-lecturer.yaml

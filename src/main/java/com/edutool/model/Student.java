@@ -1,19 +1,30 @@
 package com.edutool.model;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.hibernate.annotations.CreationTimestamp;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Table(name = "students", indexes = {
     @Index(name = "idx_student_code", columnList = "studentCode", unique = true),
     @Index(name = "idx_user_id", columnList = "user_id", unique = true),
-    @Index(name = "idx_github_username", columnList = "githubUsername")
+    @Index(name = "idx_github_username", columnList = "githubUsername"),
+    @Index(name = "idx_is_deleted", columnList = "isDeleted")
 })
 @Getter
 @Setter
@@ -44,5 +55,7 @@ public class Student {
 
     @OneToMany(mappedBy = "student")
     private List<ReportDetail> reportDetails;
+
+    private Boolean isDeleted = false;
 }
 

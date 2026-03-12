@@ -35,6 +35,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String REFRESH_TOKEN_COOKIE_PATH = "/api/auth";
+
     @Value("${app.cookie.secure:true}")
     private boolean secureCookie;
 
@@ -94,7 +96,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(secureCookie)   // false for local dev (HTTP), true for production (HTTPS)
                 .sameSite(secureCookie ? "Strict" : "Lax")
-                .path("/auth/refresh")
+                .path(REFRESH_TOKEN_COOKIE_PATH)
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
@@ -184,9 +186,9 @@ public class AuthController {
         // Clear refresh token cookie
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/auth/refresh")
+            .secure(secureCookie)
+            .sameSite(secureCookie ? "Strict" : "Lax")
+            .path(REFRESH_TOKEN_COOKIE_PATH)
                 .maxAge(0)
                 .build();
         

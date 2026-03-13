@@ -52,7 +52,7 @@ logging:
 
 jwt:
   secret: ${JWT_SECRET:very-very-super-secret-key-at-least-32-characters-long}
-  access-token-expiration: 604
+  access-token-expiration: 604800000
 
 app:
   cookie:

@@ -1,14 +1,18 @@
 package com.edutool.controller;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,8 +41,11 @@ public class AuthController {
 
     private static final String REFRESH_TOKEN_COOKIE_PATH = "/api/auth";
 
-    @Value("${app.cookie.secure:true}")
+    @Value("${app.cookie.secure:false}")
     private boolean secureCookie;
+
+    @Value("${app.cookie.same-site:Lax}")
+    private String sameSite;
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -95,7 +102,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(secureCookie)   // false for local dev (HTTP), true for production (HTTPS)
-                .sameSite(secureCookie ? "Strict" : "Lax")
+            .sameSite(sameSite)
                 .path(REFRESH_TOKEN_COOKIE_PATH)
                 .build();
 
@@ -104,6 +111,7 @@ public class AuthController {
         // return login response
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setAccessToken(accessToken);
+        loginResponse.setRefreshToken(refreshToken);
         loginResponse.setFullName(user.getFullName());
         loginResponse.setRole(user.getRole().toString());
         loginResponse.setEmail(user.getEmail());
@@ -114,20 +122,12 @@ public class AuthController {
     
     @PostMapping("/refresh")
     public ResponseEntity<BaseResponse<LoginResponse>> refresh(
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            @RequestHeader(value = "X-Refresh-Token", required = false) String refreshTokenHeader,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestBody(required = false) Map<String, String> payload) {
         
-        // Get refresh token from cookie
-        Cookie[] cookies = request.getCookies();
-        String refreshToken = null;
-        
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("refreshToken".equals(cookie.getName())) {
-                    refreshToken = cookie.getValue();
-                    break;
-                }
-            }
-        }
+        String refreshToken = extractRefreshToken(request, refreshTokenHeader, authorizationHeader, payload);
         
         if (refreshToken == null) {
             throw new IllegalArgumentException("Refresh token not found");
@@ -148,6 +148,36 @@ public class AuthController {
         response.setStatus(user.getStatus().toString());
         
         return ResponseEntity.ok(BaseResponse.success("Token refreshed successfully", response));
+    }
+
+    private String extractRefreshToken(
+            HttpServletRequest request,
+            String refreshTokenHeader,
+            String authorizationHeader,
+            Map<String, String> payload) {
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        if (StringUtils.hasText(refreshTokenHeader)) {
+            return refreshTokenHeader;
+        }
+
+        if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Refresh ")) {
+            return authorizationHeader.substring(8);
+        }
+
+        if (payload != null && StringUtils.hasText(payload.get("refreshToken"))) {
+            return payload.get("refreshToken");
+        }
+
+        return null;
     }
     
     @PostMapping("/logout")
@@ -187,7 +217,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
             .secure(secureCookie)
-            .sameSite(secureCookie ? "Strict" : "Lax")
+            .sameSite(sameSite)
             .path(REFRESH_TOKEN_COOKIE_PATH)
                 .maxAge(0)
                 .build();

@@ -20,4 +20,6 @@ public class LoginResponse {
     private String status;
 
     private String accessToken;
+
+    private String refreshToken;
 }
